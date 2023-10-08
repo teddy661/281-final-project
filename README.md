@@ -16,10 +16,10 @@ The final deliverable will be a link to your well-commented code, and a written 
 ### Rubric
 **Total** 100 pts</br>
 **Proposal** - 5 pts</br>
-Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br>
-**_Project Description_**</br>
-There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories. There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br>
-**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br>
+Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br></br>
+>**Project Description**</br>
+There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories. There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
+**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
 **Example Images**</br></br>
 
 **Feature Extraction** - 35 pts</br>
