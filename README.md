@@ -20,7 +20,11 @@ Provide a link to the dataset, example images, description of the variation in t
 
 ### Project Description</br>
 There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories.</br>
-There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
+There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features:</br></br>
++ Instance Segmentation: Using object detection techniques, such as bounding box regression and non-maximum suppression, to first identify the locations of flowers in the image. Then, the models use semantic segmentation techniques.
++ Semantic Segmentation: Classifying each pixel in an image into one of several predefined classes.
++ Keypoint Detection: Also known as keypoint estimation, involves identifying specific points of interest in an image, such as the corners of petals in a flower.
+</br></br>
 **Example Images**</br></br>
 ![Flowers images](https://github.com/teddy661/281-final-project/blob/main/docs/__results___22_0.png)</br></br>
 **[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
