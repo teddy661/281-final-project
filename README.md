@@ -16,14 +16,14 @@ The final deliverable will be a link to your well-commented code, and a written 
 ### Rubric
 **Total** 100 pts</br>
 **Proposal** - 5 pts</br>
-Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)
-**Feature Extraction** - 35 pts
-This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.
-**Classification** - 35 pts
-This part should include code to perform classification using at least two methods learned in class, plots showing the results of classification per category, a discussion of possible reasons why the classifier might work better for some categories than others, and explanation of the limitations of the classifier.
-**Generalizability** - 10 pts
-Your data should be split into train, validation, and test groups before training the classifier, and you should do a hyperparameter search using parts of the validation set in a way that avoids over-fitting and maximizes generalizability. Report performance on the test set, and include a discussion of whether you achieved generalizability, and how your training process might be improved.
-**Efficiency vs Accuracy** - 10 pts
-For the various combinations of three feature vectors and two classifiers, include characterization of both accuracy and training/inference cost (based on time, assuming equal computational power). Optimize one solution for accuracy and one for efficiency. Include a discussion of the relative trade-offs necessary for each of these solutions.
-**Quality of Explanation** - 5 pts
-Overall quality of report, including readability of figures and code comments, quality of analysis, and discussion of limitations.
+Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br>
+**Feature Extraction** - 35 pts</br>
+This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.</br>
+**Classification** - 35 pts</br>
+This part should include code to perform classification using at least two methods learned in class, plots showing the results of classification per category, a discussion of possible reasons why the classifier might work better for some categories than others, and explanation of the limitations of the classifier.</br>
+**Generalizability** - 10 pts</br>
+Your data should be split into train, validation, and test groups before training the classifier, and you should do a hyperparameter search using parts of the validation set in a way that avoids over-fitting and maximizes generalizability. Report performance on the test set, and include a discussion of whether you achieved generalizability, and how your training process might be improved.</br>
+**Efficiency vs Accuracy** - 10 pts</br>
+For the various combinations of three feature vectors and two classifiers, include characterization of both accuracy and training/inference cost (based on time, assuming equal computational power). Optimize one solution for accuracy and one for efficiency. Include a discussion of the relative trade-offs necessary for each of these solutions.</br>
+**Quality of Explanation** - 5 pts</br>
+Overall quality of report, including readability of figures and code comments, quality of analysis, and discussion of limitations.</br>
