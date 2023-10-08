@@ -19,10 +19,11 @@ The final deliverable will be a link to your well-commented code, and a written 
 Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br></br>
 
 ### Project Description</br>
-There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories. There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
-**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br>
+There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories.</br>
+There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
 **Example Images**</br></br>
 ![Flowers images](https://github.com/teddy661/281-final-project/blob/main/docs/__results___22_0.png)</br></br>
+**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
 
 >**Feature Extraction** - 35 pts</br>
 >This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.</br>
