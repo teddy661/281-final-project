@@ -14,8 +14,8 @@ Finally, you will build and train at least two classifiers using two different c
 The final deliverable will be a link to your well-commented code, and a written report (PDF) describing your process, with figures showing the results for each step. To ensure that your projects are on-track, each group will provide short weekly status updates in the second half of the semester, including a final presentation during the last week of class.
 
 ### Rubric
-**Total** 100 pts
-**Proposal** - 5 pts
+**Total** 100 pts<br>
+**Proposal** - 5 pts<br>
 Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)
 **Feature Extraction** - 35 pts
 This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.
