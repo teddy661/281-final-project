@@ -24,6 +24,7 @@ There are multiple colors in flowers, however, this classification will rely on 
 + Instance Segmentation: Using object detection techniques, such as bounding box regression and non-maximum suppression, to first identify the locations of flowers in the image. Then, the models use semantic segmentation techniques.
 + Semantic Segmentation: Classifying each pixel in an image into one of several predefined classes.
 + Keypoint Detection: Also known as keypoint estimation, involves identifying specific points of interest in an image, such as the corners of petals in a flower.
+
 </br></br>
 **Example Images**</br></br>
 ![Flowers images](https://github.com/teddy661/281-final-project/blob/main/docs/__results___22_0.png)</br></br>
