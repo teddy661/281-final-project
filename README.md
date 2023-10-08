@@ -20,8 +20,9 @@ Provide a link to the dataset, example images, description of the variation in t
 
 ### Project Description</br>
 There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories. There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
-**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
+**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br>
 **Example Images**</br></br>
+![Flowers images](https://github.com/teddy661/281-final-project/blob/main/docs/__results___22_0.png)</br></br>
 
 >**Feature Extraction** - 35 pts</br>
 >This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.</br>
