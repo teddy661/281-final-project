@@ -3,7 +3,7 @@
 ## Final Project
 **DATASCI 281: Foundations of Computer Vision**
 
-### Overview
+>### Overview
 For your final project, you will work with a small group to build a custom image classifier using the tools you have learned in this class. The type of classification problem you solve will be up to you.
 First, you will need to find an image dataset online. There are many popular datasets used for classification across many domains, including medicine, architecture, agriculture, satellite imagery, etc. Your dataset should have at least 3 classes, be of at least moderate difficulty (more complicatedthan MNIST), and should already include any labels needed to answer your intended classification query (supervised learning only). You will likely need to perform some pre-processing steps on your images to ensure that they are the right size, resolution, number of channels, appropriate contrast, etc. You will turn in a proposal including information about your dataset and the intended classification question you hope to answer, along with a few other details described below.
 
@@ -17,7 +17,8 @@ The final deliverable will be a link to your well-commented code, and a written 
 **Total** 100 pts</br>
 **Proposal** - 5 pts</br>
 Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br></br>
->**Project Description**</br>
+
+**Project Description**</br>
 There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories. There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features.</br></br>
 **[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
 **Example Images**</br></br>
