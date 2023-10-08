@@ -16,7 +16,12 @@ The final deliverable will be a link to your well-commented code, and a written 
 ### Rubric
 **Total** 100 pts</br>
 **Proposal** - 5 pts</br>
-Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br>
+Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br>
+**Project Description**</br>
+Classification of ... </br>
+[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)</br>
+**Example Images**</br></br>
+
 **Feature Extraction** - 35 pts</br>
 This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.</br>
 **Classification** - 35 pts</br>
