@@ -1,3 +1,7 @@
+# Specific stuff for this project
+sign_data.7z
+sign_data/
+sign_data.db
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
