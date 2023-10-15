@@ -19,16 +19,27 @@ The final deliverable will be a link to your well-commented code, and a written 
 Provide a link to the dataset, example images, description of the variation in the dataset (e.g. categories, size/resolution, etc), description of the intended classification problem (i.e., list of output categories), estimation of the approximate number of images expected to be in each category, and a guess of the types of image features that may be useful for this categorization (e.g. edges, histograms, etc)</br></br></br>
 
 ### Project Description</br>
-There are over 400,000 different types of flowers. This project is intended to classify the type of flowers by categories.</br>
-There are multiple colors in flowers, however, this classification will rely on other features, such as shape, size, number of petals, and other features:</br></br>
-+ Instance Segmentation: Using object detection techniques, such as bounding box regression and non-maximum suppression, to first identify the locations of flowers in the image. Then, the models use semantic segmentation techniques.
+There are over 1,000 traffic signs in Germany. The signaling system seems to be consistent, comprehensive and with a well-defined classification mechanism.</br>
+Traffic signs are easily divided in four groups or classes:</br><br>
+
++ Red triangle sign - These are used as warning or hazard signs. For instance, a slippery road ahead. The yield sign is the only inverted red triangle.
++ Red circle sign - These road signs prohibit driving actions or state of action, for instance, maximum speed limit.
++ Blue circle sign - The blue background signs depict mandatory actions, for example a minimum speed limit.
++ Blue square sign - These are usually regulation/recommendation signs, for example parking on pavement allowed.
+
+
+The official German traffic code assign a unique number to the traffic signs, which are used by the police on tickets and reports.
+
+There are multiple shapes and images within each generic class however. Our project aims to identify different classes and specific features such as:</br></br>
+
++ Instance Segmentation: Using object detection techniques, such as bounding box regression and non-maximum suppression, to first identify the locations of shapes (triangles, circles, etc.)
 + Semantic Segmentation: Classifying each pixel in an image into one of several predefined classes.
-+ Keypoint Detection: Also known as keypoint estimation, involves identifying specific points of interest in an image, such as the corners of petals in a flower.
++ Keypoint Detection: Also known as keypoint estimation, involves identifying specific points of interest in an image, such as the corners of numbers within a circle.
 
 </br></br>
 **Example Images**</br></br>
-![Flowers images](https://github.com/teddy661/281-final-project/blob/main/docs/__results___22_0.png)</br></br>
-**[Dataset link](https://www.kaggle.com/code/ryanholbrook/create-your-first-submission/notebook)**</br></br>
+![German traffic signs](tbd)</br></br>
+**[Dataset link](https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign/data)**</br></br>
 
 >**Feature Extraction** - 35 pts</br>
 >This part should include code to extract features, illustrations of the features extracted from several example images, plots showing the amount of variation in the dataset, as well as PCA decomposition and tSNE visualization of features. Be sure to accurately describe and interpret your methods and results. You must include at least two simple features and at least one complex feature (see above). Include a detailed explanation of why you chose these particular features for your dataset and classification problem.</br>
