@@ -22,10 +22,10 @@ Provide a link to the dataset, example images, description of the variation in t
 There are over 1,000 traffic signs in Germany. The signaling system seems to be consistent, comprehensive and with a well-defined classification mechanism.</br>
 Traffic signs are easily divided in four groups or classes:</br><br>
 
-+ Red triangle sign - These are used as warning or hazard signs. For instance, a slippery road ahead. The yield sign is the only inverted red triangle.
-+ Red circle sign - These road signs prohibit driving actions or state of action, for instance, maximum speed limit.
-+ Blue circle sign - The blue background signs depict mandatory actions, for example a minimum speed limit.
-+ Blue square sign - These are usually regulation/recommendation signs, for example parking on pavement allowed.
++ Red triangle sign (https://github.com/teddy661/281-final-project/blob/main/docs/warning.png) - These are used as warning or hazard signs. For instance, a slippery road ahead. The yield sign is the only inverted red triangle.
++ Red circle sign (https://github.com/teddy661/281-final-project/blob/main/docs/red-circle.png) - These road signs prohibit driving actions or state of action, for instance, maximum speed limit.
++ Blue circle sign (https://github.com/teddy661/281-final-project/blob/main/docs/blue-circle.png) - The blue background signs depict mandatory actions, for example a minimum speed limit.
++ Blue square sign (https://github.com/teddy661/281-final-project/blob/main/docs/square.png) - These are usually regulation/recommendation signs, for example parking on pavement allowed.
 
 
 The official German traffic code assign a unique number to the traffic signs, which are used by the police on tickets and reports.
