@@ -38,7 +38,8 @@ There are multiple shapes and images within each generic class however. Our proj
 
 </br></br>
 **Example Images**</br></br>
-![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/10.png)</br></br>
+|![traffic sign 10](https://github.com/teddy661/281-final-project/blob/main/src/images/10.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/11.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/12.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/13.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/14.png)|
+|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/18.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/22.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/23.png)|![German traffic signs](https://github.com/teddy661/281-final-project/blob/main/src/images/37.png)|</br></br>
 **[Dataset link](https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign/data)**</br></br>
 
 >**Feature Extraction** - 35 pts</br>
