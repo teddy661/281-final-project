@@ -72,7 +72,7 @@ def get_train_df(create_cache=False):
         train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
         train_df = parallelize_dataframe(train_df, update_path, cpu_count)
         train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
-        train_df = parallelize_dataframe(train_df, convert_to_bytes, cpu_count)
+        #train_df = parallelize_dataframe(train_df, convert_to_bytes, cpu_count)
         store["train"] = train_df
     store.close()
     return train_df
@@ -88,7 +88,7 @@ def get_test_df(create_cache=False):
         test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
         test_df = parallelize_dataframe(test_df, update_path, cpu_count)
         test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
-        test_df = parallelize_dataframe(test_df, convert_to_bytes, cpu_count)
+        #test_df = parallelize_dataframe(test_df, convert_to_bytes, cpu_count)
         store["test"] = test_df
     store.close()
     return test_df
