@@ -1,10 +1,11 @@
-from pathlib import Path
-import pandas as pd
-import numpy as np
-from PIL import Image
-import psutil
-from multiprocessing import Pool
 from io import BytesIO
+from multiprocessing import Pool
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import psutil
+from PIL import Image
 
 try:
     __file__
@@ -62,6 +63,15 @@ def store_exists():
     return target_dir.parent.joinpath("sign_data.h5").exists()
 
 
+def crop_to_roi(df):
+    # df['Cropped']  = df['Numpy'].map(lambda x: x[x['RoiY1']:x['RoiY2'], x['RoiX1']:x['RoiX2'])
+    df["Cropped"] = df.apply(
+        lambda x: x["Numpy"][x["Roi.Y1"] : x["Roi.Y2"], x["Roi.X1"] : x["Roi.X2"]],
+        axis=1,
+    )
+    return df
+
+
 def get_train_df(create_cache=False):
     cpu_count = psutil.cpu_count(logical=False)
     train_df = None
@@ -72,7 +82,7 @@ def get_train_df(create_cache=False):
         train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
         train_df = parallelize_dataframe(train_df, update_path, cpu_count)
         train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
-        #train_df = parallelize_dataframe(train_df, convert_to_bytes, cpu_count)
+        train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
         store["train"] = train_df
     store.close()
     return train_df
@@ -88,7 +98,7 @@ def get_test_df(create_cache=False):
         test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
         test_df = parallelize_dataframe(test_df, update_path, cpu_count)
         test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
-        #test_df = parallelize_dataframe(test_df, convert_to_bytes, cpu_count)
+        test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
         store["test"] = test_df
     store.close()
     return test_df
@@ -117,10 +127,12 @@ def main():
     # update path and load images
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
+    test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
 
     # update path and load images
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
+    train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
 
     # write to disk as hdf5
     store = pd.HDFStore(target_dir.parent.joinpath("sign_data.h5"))
