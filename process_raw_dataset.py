@@ -1,3 +1,5 @@
+import sys
+import warnings
 from io import BytesIO
 from multiprocessing import Pool
 from pathlib import Path
@@ -6,6 +8,8 @@ import numpy as np
 import pandas as pd
 import psutil
 from PIL import Image
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 try:
     __file__
@@ -120,21 +124,25 @@ def main():
     cpu_count = psutil.cpu_count(logical=False)
 
     # read csv files
+    print("(1/4) Processing csv files.", file=sys.stderr)
     meta_df = pd.read_csv(target_dir.joinpath("Meta.csv"))
     train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
     test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
 
     # update path and load images
+    print("(2/4) Processing test data.", file=sys.stderr)
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
     test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
 
     # update path and load images
+    print("(3/4) Processing train data.", file=sys.stderr)
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
     train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
 
     # write to disk as hdf5
+    print("(4/4) Writing data to disk.", file=sys.stderr)
     store = pd.HDFStore(target_dir.parent.joinpath("sign_data.h5"))
     store["test"] = test_df
     store["train"] = train_df
