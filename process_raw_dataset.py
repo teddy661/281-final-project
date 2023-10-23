@@ -1,5 +1,6 @@
 import sys
 import warnings
+from datetime import datetime
 from io import BytesIO
 from multiprocessing import Pool
 from pathlib import Path
@@ -10,6 +11,8 @@ import psutil
 from PIL import Image
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=DeprecationWarning)
+warnings.simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 try:
     __file__
@@ -59,12 +62,16 @@ def convert_to_bytes(df):
 
 
 def get_store():
-    store = pd.HDFStore(target_dir.parent.joinpath("sign_data.h5"))
+    store = pd.HDFStore(get_store_path())
     return store
 
 
+def get_store_path():
+    return target_dir.parent.joinpath("sign_data.h5")
+
+
 def store_exists():
-    return target_dir.parent.joinpath("sign_data.h5").exists()
+    return get_store_path().exists()
 
 
 def crop_to_roi(df):
@@ -123,31 +130,47 @@ def get_meta_df(create_cache=False):
 def main():
     cpu_count = psutil.cpu_count(logical=False)
 
+    store_path = get_store_path()
+    if store_path.exists():
+        store_path.unlink()
+
     # read csv files
     print("(1/4) Processing csv files.", file=sys.stderr)
+    start_time = datetime.now()
     meta_df = pd.read_csv(target_dir.joinpath("Meta.csv"))
     train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
     test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
+    end_time = datetime.now()
+    print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
     # update path and load images
     print("(2/4) Processing test data.", file=sys.stderr)
+    start_time = datetime.now()
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
     test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
+    end_time = datetime.now()
+    print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
     # update path and load images
     print("(3/4) Processing train data.", file=sys.stderr)
+    start_time = datetime.now()
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
     train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
+    end_time = datetime.now()
+    print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
     # write to disk as hdf5
     print("(4/4) Writing data to disk.", file=sys.stderr)
-    store = pd.HDFStore(target_dir.parent.joinpath("sign_data.h5"))
+    start_time = datetime.now()
+    store = pd.HDFStore(get_store_path())
     store["test"] = test_df
     store["train"] = train_df
     store["meta"] = meta_df
     store.close()
+    end_time = datetime.now()
+    print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
 
 if __name__ == "__main__":
