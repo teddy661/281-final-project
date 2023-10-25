@@ -45,7 +45,7 @@ def update_path(df):
 
 
 def read_image_into_numpy(df):
-    df["Numpy"] = df["Path"].map(lambda x: np.array(Image.open(x)))
+    df["Image"] = df["Path"].map(lambda x: np.array(Image.open(x)))
     return df
 
 
@@ -57,7 +57,7 @@ def do_convert(x):
 
 def convert_to_bytes(df):
     mem_file = BytesIO()
-    df["Bytesio"] = df["Numpy"].map(lambda x: do_convert(x))
+    df["Bytesio"] = df["Image"].map(lambda x: do_convert(x))
     return df
 
 
@@ -75,11 +75,18 @@ def store_exists():
 
 
 def crop_to_roi(df):
-    # df['Cropped']  = df['Numpy'].map(lambda x: x[x['RoiY1']:x['RoiY2'], x['RoiX1']:x['RoiX2'])
-    df["Cropped"] = df.apply(
-        lambda x: x["Numpy"][x["Roi.Y1"] : x["Roi.Y2"]+1, x["Roi.X1"] : x["Roi.X2"]+1],
+    df["Cropped_Image"] = df.apply(
+        lambda x: x["Image"][
+            x["Roi.Y1"] : x["Roi.Y2"] + 1, x["Roi.X1"] : x["Roi.X2"] + 1
+        ],
         axis=1,
     )
+    return df
+
+
+def get_cropped_dimensions(df):
+    df["Cropped_Height"] = df["Cropped_Image"].apply(lambda x: x.shape[0])
+    df["Cropped_Width"] = df["Cropped_Image"].apply(lambda x: x.shape[1])
     return df
 
 
@@ -94,6 +101,7 @@ def get_train_df(create_cache=False):
         train_df = parallelize_dataframe(train_df, update_path, cpu_count)
         train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
         train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
+        train_df = parallelize_dataframe(train_df, get_cropped_dimensions, cpu_count)
         store["train"] = train_df
     store.close()
     return train_df
@@ -110,6 +118,7 @@ def get_test_df(create_cache=False):
         test_df = parallelize_dataframe(test_df, update_path, cpu_count)
         test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
         test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
+        test_df = parallelize_dataframe(test_df, get_cropped_dimensions, cpu_count)
         store["test"] = test_df
     store.close()
     return test_df
@@ -125,6 +134,18 @@ def get_meta_df(create_cache=False):
         store["meta"] = meta_df
     store.close()
     return meta_df
+
+
+def pad_cropped_image_to_original(original_image, cropped_image):
+    target_shape = original_image.shape
+
+    # Create a new array of zeros with the target shape
+    padded_array = np.zeros(target_shape, dtype=cropped_image.dtype)
+
+    # Copy the smaller array into the top-left corner of the padded array
+    padded_array[: cropped_image.shape[0], : cropped_image.shape[1]] = cropped_image
+    return_array = np.concatenate((original_image, padded_array), axis=1)
+    return return_array
 
 
 def main():
