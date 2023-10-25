@@ -77,7 +77,7 @@ def store_exists():
 def crop_to_roi(df):
     # df['Cropped']  = df['Numpy'].map(lambda x: x[x['RoiY1']:x['RoiY2'], x['RoiX1']:x['RoiX2'])
     df["Cropped"] = df.apply(
-        lambda x: x["Numpy"][x["Roi.Y1"] : x["Roi.Y2"], x["Roi.X1"] : x["Roi.X2"]],
+        lambda x: x["Numpy"][x["Roi.Y1"] : x["Roi.Y2"]+1, x["Roi.X1"] : x["Roi.X2"]+1],
         axis=1,
     )
     return df
