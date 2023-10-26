@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import psutil
 from PIL import Image
+from skimage.transform import rescale, rotate
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=DeprecationWarning)
@@ -89,6 +90,18 @@ def get_cropped_dimensions(df):
     df["Cropped_Width"] = df["Cropped_Image"].apply(lambda x: x.shape[1])
     return df
 
+def rescale_image(img, standard=35):
+  # rescale short side to standard size, then crop center
+  # median for our dataset is 35x35
+  scale = standard / min(img.shape[:2])
+  img = rescale(img, scale, anti_aliasing=True, channel_axis=2)
+  img = img[int(img.shape[0]/2 - standard/2) : int(img.shape[0]/2 + standard/2),
+            int(img.shape[1]/2 - standard/2) : int(img.shape[1]/2 + standard/2), :]
+  return img
+
+def rescale_cropped_image(df):
+    df["Standard_Image"] = df["Cropped_Image"].apply(lambda x: rescale_image(x))
+    return df
 
 def get_train_df(create_cache=False):
     cpu_count = psutil.cpu_count(logical=False)
@@ -102,6 +115,7 @@ def get_train_df(create_cache=False):
         train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
         train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
         train_df = parallelize_dataframe(train_df, get_cropped_dimensions, cpu_count)
+        train_df = parallelize_dataframe(train_df, rescale_cropped_image, cpu_count)
         store["train"] = train_df
     store.close()
     return train_df
@@ -119,6 +133,7 @@ def get_test_df(create_cache=False):
         test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
         test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
         test_df = parallelize_dataframe(test_df, get_cropped_dimensions, cpu_count)
+        test_df = parallelize_dataframe(test_df, rescale_cropped_image, cpu_count)
         store["test"] = test_df
     store.close()
     return test_df
@@ -170,6 +185,8 @@ def main():
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
     test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
+    test_df = parallelize_dataframe(test_df, get_cropped_dimensions, cpu_count)
+    test_df = parallelize_dataframe(test_df, rescale_cropped_image, cpu_count)
     end_time = datetime.now()
     print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
@@ -179,6 +196,8 @@ def main():
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
     train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
+    train_df = parallelize_dataframe(train_df, get_cropped_dimensions, cpu_count)
+    train_df = parallelize_dataframe(train_df, rescale_cropped_image, cpu_count)
     end_time = datetime.now()
     print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
 
