@@ -90,18 +90,24 @@ def get_cropped_dimensions(df):
     df["Cropped_Width"] = df["Cropped_Image"].apply(lambda x: x.shape[1])
     return df
 
+
 def rescale_image(img, standard=35):
-  # rescale short side to standard size, then crop center
-  # median for our dataset is 35x35
-  scale = standard / min(img.shape[:2])
-  img = rescale(img, scale, anti_aliasing=True, channel_axis=2)
-  img = img[int(img.shape[0]/2 - standard/2) : int(img.shape[0]/2 + standard/2),
-            int(img.shape[1]/2 - standard/2) : int(img.shape[1]/2 + standard/2), :]
-  return img
+    # rescale short side to standard size, then crop center
+    # median for our dataset is 35x35
+    scale = standard / min(img.shape[:2])
+    img = rescale(img, scale, anti_aliasing=True, channel_axis=2)
+    img = img[
+        int(img.shape[0] / 2 - standard / 2) : int(img.shape[0] / 2 + standard / 2),
+        int(img.shape[1] / 2 - standard / 2) : int(img.shape[1] / 2 + standard / 2),
+        :,
+    ]
+    return img
+
 
 def rescale_cropped_image(df):
     df["Standard_Image"] = df["Cropped_Image"].apply(lambda x: rescale_image(x))
     return df
+
 
 def get_train_df(create_cache=False):
     cpu_count = psutil.cpu_count(logical=False)
