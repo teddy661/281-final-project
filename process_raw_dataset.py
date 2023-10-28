@@ -175,48 +175,62 @@ def main():
     store_path = get_store_path()
     if store_path.exists():
         store_path.unlink()
+    store = pd.HDFStore(get_store_path())
 
     # read csv files
-    print("(1/4) Processing csv files.", file=sys.stderr)
-    start_time = datetime.now()
+    print("(1/3) Processing Meta files.", file=sys.stderr)
+    script_start_time = start_time = datetime.now()
+    meta_full_df = pd.read_csv(target_dir.joinpath("Meta_full.csv"))
     meta_df = pd.read_csv(target_dir.joinpath("Meta.csv"))
-    train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
-    test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
+    store["meta"] = meta_df
+    store["meta_full"] = meta_full_df
     end_time = datetime.now()
     print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
+    print(f"\tMeta data shape: {meta_df.shape}", file=sys.stderr)
+    print(f"\tMeta data columns: {meta_df.columns}", file=sys.stderr)
+    print(f"\tMeta full data shape: {meta_full_df.shape}", file=sys.stderr)
+    print(f"\tMeta full data columns: {meta_full_df.columns}", file=sys.stderr)
+    del meta_df
+    del meta_full_df
 
     # update path and load images
-    print("(2/4) Processing test data.", file=sys.stderr)
+    print("(2/3) Processing test data.", file=sys.stderr)
     start_time = datetime.now()
+    test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
     test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
     test_df = parallelize_dataframe(test_df, get_cropped_dimensions, cpu_count)
     test_df = parallelize_dataframe(test_df, rescale_cropped_image, cpu_count)
+    store["test"] = test_df
     end_time = datetime.now()
     print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
+    print(f"\tTest data shape: {test_df.shape}", file=sys.stderr)
+    print(f"\tTest data columns: {test_df.columns}", file=sys.stderr)
+    del test_df
 
     # update path and load images
-    print("(3/4) Processing train data.", file=sys.stderr)
+    print("(3/3) Processing train data.", file=sys.stderr)
     start_time = datetime.now()
+    train_df = pd.read_csv(target_dir.joinpath("Train.csv"))
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
     train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
     train_df = parallelize_dataframe(train_df, get_cropped_dimensions, cpu_count)
     train_df = parallelize_dataframe(train_df, rescale_cropped_image, cpu_count)
-    end_time = datetime.now()
-    print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
-
-    # write to disk as hdf5
-    print("(4/4) Writing data to disk.", file=sys.stderr)
-    start_time = datetime.now()
-    store = pd.HDFStore(get_store_path())
-    store["test"] = test_df
     store["train"] = train_df
-    store["meta"] = meta_df
-    store.close()
     end_time = datetime.now()
     print(f"\tTime elapsed: {end_time - start_time}", file=sys.stderr)
+    print(f"\tTrain data shape: {train_df.shape}", file=sys.stderr)
+    print(f"\tTrain data columns: {train_df.columns}", file=sys.stderr)
+    del train_df
+
+    store.close()
+    script_end_time = datetime.now()
+    print(
+        f"\n\nTotal Time elapsed: {script_end_time - script_start_time}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":
