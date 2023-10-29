@@ -91,9 +91,11 @@ def get_cropped_dimensions(df):
     return df
 
 
-def rescale_image(img, standard=35):
+def rescale_image(img, standard=224):
     # rescale short side to standard size, then crop center
     # median for our dataset is 35x35
+    # we're doing geometric shapes for our image dataset so we'll scale these 
+    # way up to 224x224
     scale = standard / min(img.shape[:2])
     img = rescale(img, scale, anti_aliasing=True, channel_axis=2)
     img = img[
