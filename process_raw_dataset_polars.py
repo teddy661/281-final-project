@@ -27,9 +27,8 @@ def prelim_validate_dataset_dir(root_dir: Path) -> bool:
     return prelim_ready
 
 
-def update_path(path: Path) -> Path:
-    target_path = Path("stuff")
-    return target_path.joinpath(path).resolve()
+def update_path(path: Path, root_dir: Path) -> Path:
+    return root_dir.joinpath(path)
 
 
 def main():
@@ -53,7 +52,10 @@ def main():
 
     test_csv = root_dir.joinpath("Test.csv")
     test_df = pl.read_csv(root_dir.joinpath("Test.csv"))
-    test_df.with_columns(pl.col("Path").map_elements(update_path))
+    result = test_df.with_columns(
+        pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
+    )
+    print(result)
 
 
 if __name__ == "__main__":
