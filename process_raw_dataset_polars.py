@@ -31,12 +31,18 @@ def update_path(path: Path, root_dir: Path) -> Path:
     return str(root_dir.joinpath(path).resolve())
 
 
-def crop_to_roi(width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list) -> tuple:
-    image = np.array(image).reshape((height, width, 3))
-    cropped_image = image[y1:y2+1, x1:x2+1, :]
+def restore_image_from_list(image: list, width: int, height: int) -> list:
+    return np.array(image).reshape((height, width, 3))
+
+
+def crop_to_roi(
+    width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list
+) -> tuple:
+    image = restore_image_from_list(image, width, height)
+    cropped_image = image[y1 : y2 + 1, x1 : x2 + 1, :]
     cropped_image_height = cropped_image.shape[0]
     cropped_image_width = cropped_image.shape[1]
-    return pl.DataFrame({"Cropped_Height":cropped_image_height, "Cropped_Width":cropped_image_width, "Cropped_Image":list(cropped_image.ravel())})
+    return cropped_image_width, cropped_image_height, list(cropped_image.ravel())
 
 
 def main():
@@ -60,21 +66,39 @@ def main():
 
     test_csv = root_dir.joinpath("Test.csv")
     test_df = pl.read_csv(root_dir.joinpath("Test.csv"))
-    
+
     test_df = test_df.with_columns(
         pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
     )
 
     test_df = test_df.with_columns(
-        pl.col("Path").map_elements(lambda x: list(np.array(Image.open(x)).ravel())).alias("Image")
+        pl.col("Path")
+        .map_elements(lambda x: list(np.array(Image.open(x)).ravel()))
+        .alias("Image")
     )
 
-    thing = test_df.map_elements(
-            lambda x: crop_to_roi(x['Width'], x['Height'], x["Roi.Y1"], x["Roi.Y2"], x["Roi.X1"], x["Roi.X2"], x["Image"])
-        ).explode()
+    test_df = test_df.with_columns(
+        pl.struct(["Width", "Height", "Roi.Y1", "Roi.Y2", "Roi.X1", "Roi.X2", "Image"])
+        .map_elements(
+            lambda x: dict(
+                zip(
+                    ("Cropped_Width", "Cropped_Height", "Cropped_Image"),
+                    crop_to_roi(
+                        x["Width"],
+                        x["Height"],
+                        x["Roi.Y1"],
+                        x["Roi.Y2"],
+                        x["Roi.X1"],
+                        x["Roi.X2"],
+                        x["Image"],
+                    ),
+                )
+            )
+        )
+        .alias("New_Cols")
+    ).unnest("New_Cols")
 
-
-    print(thing.head(5))
+    print(test_df.head(5))
 
 
 if __name__ == "__main__":
