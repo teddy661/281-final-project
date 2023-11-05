@@ -89,11 +89,12 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
 
     # Read the image into a numpy array and store it as a flattened list
     # This allows pyarrow to store it correctly in the parquet file
+    # Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()
     df = df.with_columns(
         pl.col("Path")
-        .map_elements(lambda x: list(np.array(Image.open(x)).ravel()))
+        .map_elements(lambda x: list((np.array(Image.open(x)) / 255.0).ravel()))
         .alias("Image")
     )
     end_time = datetime.now()
@@ -198,6 +199,7 @@ def main():
         compression="zstd",
         use_pyarrow=True,
     )
+    print(test_df.head())
     del test_df  # free up some memory
     print(f"End Writing test data to parquet file.", file=sys.stderr)
 
@@ -210,6 +212,7 @@ def main():
         f"End Processing train data. Total Time: {test_end_time - test_start_time}",
         file=sys.stderr,
     )
+    print(train_df.head())
     print(f"Begin Writing train data to parquet file.", file=sys.stderr)
     train_df.write_parquet(
         "Train.parquet",
