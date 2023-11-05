@@ -80,7 +80,7 @@ def pad_cropped_image_to_original(original_image, cropped_image):
 
 def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
     df = pl.read_csv(csv_file)
-
+    df = df.with_columns((pl.col("Width") * pl.col("Height")).alias("Resolution"))
     # Update the path to be absolute so we're not passing around relative paths
     # this makes the parquet file machine dependent
     df = df.with_columns(
@@ -123,6 +123,9 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         )
         .alias("New_Cols")
     ).unnest("New_Cols")
+    df = df.with_columns(
+        (pl.col("Cropped_Width") * pl.col("Cropped_Height")).alias("Cropped_Resolution")
+    )
     end_time = datetime.now()
     print(
         f"\tEnd Cropping Images. Total Time: {end_time - start_time}", file=sys.stderr
@@ -147,6 +150,9 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         )
         .alias("New_Cols")
     ).unnest("New_Cols")
+    df = df.with_columns(
+        (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
+    )
     end_time = datetime.now()
     print(
         f"\tEnd Rescaling Images. Total Time: {end_time - start_time}", file=sys.stderr
@@ -197,6 +203,7 @@ def main():
     test_df.write_parquet(
         "Test.parquet",
         compression="zstd",
+        compression_level=5,
         use_pyarrow=True,
     )
     print(test_df.head())
@@ -217,6 +224,7 @@ def main():
     train_df.write_parquet(
         "Train.parquet",
         compression="zstd",
+        compression_level=5,
         use_pyarrow=True,
     )
     print(f"End Writing train data to parquet file.", file=sys.stderr)
