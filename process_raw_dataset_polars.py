@@ -53,9 +53,10 @@ def rescale_image(width: int, height: int, image: list, standard=64):
     # we're doing geometric shapes for our image dataset so we'll scale these
     # way up to 64x64
     # This is going to return an image with the pixels normalized to 0-1
+    # use order = 5 for (Bi-quintic) #Very slow Super high quality result
     image = restore_image_from_list(width, height, image)
     scale = standard / min(image.shape[:2])
-    image = rescale(image, scale, anti_aliasing=True, channel_axis=2)
+    image = rescale(image, scale, order=5, anti_aliasing=True, channel_axis=2)
     image = image[
         int(image.shape[0] / 2 - standard / 2) : int(image.shape[0] / 2 + standard / 2),
         int(image.shape[1] / 2 - standard / 2) : int(image.shape[1] / 2 + standard / 2),
@@ -98,7 +99,7 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         .alias("Image")
     )
     end_time = datetime.now()
-    print(f"\tEnd Reading Images. Total Time: {end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Reading Images Time: {end_time - start_time}", file=sys.stderr)
 
     # Crop the image to the Roi values provided in the dataset
     print(f"\tBegin Cropping Images", file=sys.stderr)
@@ -127,9 +128,7 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         (pl.col("Cropped_Width") * pl.col("Cropped_Height")).alias("Cropped_Resolution")
     )
     end_time = datetime.now()
-    print(
-        f"\tEnd Cropping Images. Total Time: {end_time - start_time}", file=sys.stderr
-    )
+    print(f"\tEnd Cropping Images Time: {end_time - start_time}", file=sys.stderr)
 
     # Rescale the image to our standard size which is 64x64
     print(f"\tBegin Rescaling Images", file=sys.stderr)
@@ -154,9 +153,7 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
     )
     end_time = datetime.now()
-    print(
-        f"\tEnd Rescaling Images. Total Time: {end_time - start_time}", file=sys.stderr
-    )
+    print(f"\tEnd Rescaling Images Time: {end_time - start_time}", file=sys.stderr)
     return df
 
 
@@ -196,7 +193,7 @@ def main():
     test_df = process_csv(test_csv, root_dir)
     train_end_time = datetime.now()
     print(
-        f"End Processing test data. Total Time: {train_end_time - train_start_time}",
+        f"End Processing test data Time: {train_end_time - train_start_time}",
         file=sys.stderr,
     )
     print(f"Begin Writing test data to parquet file", file=sys.stderr)
@@ -216,7 +213,7 @@ def main():
     train_df = process_csv(train_csv, root_dir)
     test_end_time = datetime.now()
     print(
-        f"End Processing train data. Total Time: {test_end_time - test_start_time}",
+        f"End Processing train data Time: {test_end_time - test_start_time}",
         file=sys.stderr,
     )
     print(train_df.head())
