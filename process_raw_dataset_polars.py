@@ -48,12 +48,13 @@ def crop_to_roi(
 
 
 def rescale_image(width: int, height: int, image: list, standard=64):
-    # rescale short side to standard size, then crop center
-    # median for our dataset is 35x35
-    # we're doing geometric shapes for our image dataset so we'll scale these
-    # way up to 64x64
-    # This is going to return an image with the pixels normalized to 0-1
-    # use order = 5 for (Bi-quintic) #Very slow Super high quality result
+    """
+    Rescale the image to a standard size. Median for our dataset is 35x35.
+    Use order = 5 for (Bi-quintic) #Very slow Super high quality result. Very slow
+    Settle on 64x64 for our standard size after discussion with professor.
+    There will be some cropping of the image, but we'll center the crop.
+    Returns an image with the pixel values normalized betwen 0-1
+    """
     image = restore_image_from_list(width, height, image)
     scale = standard / min(image.shape[:2])
     image = rescale(image, scale, order=5, anti_aliasing=True, channel_axis=2)
@@ -68,6 +69,10 @@ def rescale_image(width: int, height: int, image: list, standard=64):
 
 
 def pad_cropped_image_to_original(original_image, cropped_image):
+    """
+    Put the samller image in the top left corner and pad out to the
+    right and bottom with zeros to match the original image size.
+    """
     target_shape = original_image.shape
 
     # Create a new array of zeros with the target shape
@@ -80,6 +85,14 @@ def pad_cropped_image_to_original(original_image, cropped_image):
 
 
 def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
+    """
+    Read the csv file into a polars dataframe.
+    Read the image into a numpy array and store it as a flattened list
+    This allows pyarrow to store it correctly in the parquet file
+    Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
+    Crop the image to the Roi values provided in the dataset
+    Rescale the image to our standard size which is 64x64
+    """
     df = pl.read_csv(csv_file)
     df = df.with_columns((pl.col("Width") * pl.col("Height")).alias("Resolution"))
     # Update the path to be absolute so we're not passing around relative paths
