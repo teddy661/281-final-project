@@ -31,18 +31,36 @@ def update_path(path: Path, root_dir: Path) -> Path:
     return str(root_dir.joinpath(path).resolve())
 
 
-def restore_image_from_list(image: list, width: int, height: int) -> list:
+def restore_image_from_list(width: int, height: int, image: list) -> np.array:
     return np.array(image).reshape((height, width, 3))
 
 
 def crop_to_roi(
     width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list
 ) -> tuple:
-    image = restore_image_from_list(image, width, height)
+    image = restore_image_from_list(width, height, image)
     cropped_image = image[y1 : y2 + 1, x1 : x2 + 1, :]
     cropped_image_height = cropped_image.shape[0]
     cropped_image_width = cropped_image.shape[1]
     return cropped_image_width, cropped_image_height, list(cropped_image.ravel())
+
+
+def rescale_image(width: int, height: int, image: list, standard=64):
+    # rescale short side to standard size, then crop center
+    # median for our dataset is 35x35
+    # we're doing geometric shapes for our image dataset so we'll scale these
+    # way up to 64x64
+    image = restore_image_from_list(width, height, image)
+    scale = standard / min(image.shape[:2])
+    image = rescale(image, scale, anti_aliasing=True, channel_axis=2)
+    image = image[
+        int(image.shape[0] / 2 - standard / 2) : int(image.shape[0] / 2 + standard / 2),
+        int(image.shape[1] / 2 - standard / 2) : int(image.shape[1] / 2 + standard / 2),
+        :,
+    ]
+    scaled_image_height = image.shape[0]
+    scaled_image_width = image.shape[1]
+    return scaled_image_width, scaled_image_height, list(image.ravel())
 
 
 def main():
@@ -91,6 +109,23 @@ def main():
                         x["Roi.X1"],
                         x["Roi.X2"],
                         x["Image"],
+                    ),
+                )
+            )
+        )
+        .alias("New_Cols")
+    ).unnest("New_Cols")
+
+    test_df = test_df.with_columns(
+        pl.struct(["Cropped_Width", "Cropped_Height", "Cropped_Image"])
+        .map_elements(
+            lambda x: dict(
+                zip(
+                    ("Scaled_Width", "Scaled_Height", "Scaled_Image"),
+                    rescale_image(
+                        x["Cropped_Width"],
+                        x["Cropped_Height"],
+                        x["Cropped_Image"],
                     ),
                 )
             )
