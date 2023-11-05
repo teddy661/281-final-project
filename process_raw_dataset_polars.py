@@ -28,7 +28,15 @@ def prelim_validate_dataset_dir(root_dir: Path) -> bool:
 
 
 def update_path(path: Path, root_dir: Path) -> Path:
-    return root_dir.joinpath(path)
+    return str(root_dir.joinpath(path).resolve())
+
+
+def crop_to_roi(width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list) -> tuple:
+    image = np.array(image).reshape((height, width, 3))
+    cropped_image = image[y1:y2+1, x1:x2+1, :]
+    cropped_image_height = cropped_image.shape[0]
+    cropped_image_width = cropped_image.shape[1]
+    return pl.DataFrame({"Cropped_Height":cropped_image_height, "Cropped_Width":cropped_image_width, "Cropped_Image":list(cropped_image.ravel())})
 
 
 def main():
@@ -52,10 +60,21 @@ def main():
 
     test_csv = root_dir.joinpath("Test.csv")
     test_df = pl.read_csv(root_dir.joinpath("Test.csv"))
-    result = test_df.with_columns(
+    
+    test_df = test_df.with_columns(
         pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
     )
-    print(result)
+
+    test_df = test_df.with_columns(
+        pl.col("Path").map_elements(lambda x: list(np.array(Image.open(x)).ravel())).alias("Image")
+    )
+
+    thing = test_df.map_elements(
+            lambda x: crop_to_roi(x['Width'], x['Height'], x["Roi.Y1"], x["Roi.Y2"], x["Roi.X1"], x["Roi.X2"], x["Image"])
+        ).explode()
+
+
+    print(thing.head(5))
 
 
 if __name__ == "__main__":

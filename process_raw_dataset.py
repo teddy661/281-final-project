@@ -91,11 +91,11 @@ def get_cropped_dimensions(df):
     return df
 
 
-def rescale_image(img, standard=224):
+def rescale_image(img, standard=64):
     # rescale short side to standard size, then crop center
     # median for our dataset is 35x35
     # we're doing geometric shapes for our image dataset so we'll scale these 
-    # way up to 224x224
+    # way up to 64x64
     scale = standard / min(img.shape[:2])
     img = rescale(img, scale, anti_aliasing=True, channel_axis=2)
     img = img[
@@ -201,6 +201,8 @@ def main():
     test_df = pd.read_csv(target_dir.joinpath("Test.csv"))
     test_df = parallelize_dataframe(test_df, update_path, cpu_count)
     test_df = parallelize_dataframe(test_df, read_image_into_numpy, cpu_count)
+    test_df = parallelize_dataframe(test_df, convert_to_bytes, cpu_count)
+    #test_df.drop(columns=["Image"], inplace=True)
     test_df = parallelize_dataframe(test_df, crop_to_roi, cpu_count)
     test_df = parallelize_dataframe(test_df, get_cropped_dimensions, cpu_count)
     test_df = parallelize_dataframe(test_df, rescale_cropped_image, cpu_count)
@@ -218,6 +220,8 @@ def main():
     train_df = parallelize_dataframe(train_df, update_path, cpu_count)
     train_df = parallelize_dataframe(train_df, read_image_into_numpy, cpu_count)
     train_df = parallelize_dataframe(train_df, crop_to_roi, cpu_count)
+    train_df = parallelize_dataframe(train_df, convert_to_bytes, cpu_count)
+    #train_df.drop(columns=["Image"], inplace=True)
     train_df = parallelize_dataframe(train_df, get_cropped_dimensions, cpu_count)
     train_df = parallelize_dataframe(train_df, rescale_cropped_image, cpu_count)
     store["train"] = train_df
