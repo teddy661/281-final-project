@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import cv2
 import numpy as np
 import polars as pl
 from PIL import Image
@@ -68,6 +69,27 @@ def rescale_image(width: int, height: int, image: list, standard=64):
     return scaled_image_width, scaled_image_height, list(image.ravel())
 
 
+def stretch_histogram(width, height, image: np.array) -> np.array:
+    """
+    Stretch the histogram of the image to the full range of 0-255
+    For our data this appears to work much better than equalizing the histogram
+    """
+    restored_image = (restore_image_from_list(width, height, image) * 255).astype(
+        np.uint8
+    )
+    lab_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2LAB)
+    l_channel = lab_image[:, :, 0]
+    stretched_l_channel = (
+        (l_channel - np.min(l_channel)) / (np.max(l_channel) - np.min(l_channel)) * 255
+    ).astype(np.uint8)
+    stretched_lab_image = np.stack(
+        (stretched_l_channel, lab_image[:, :, 1], lab_image[:, :, 2]), axis=2
+    )
+    rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
+    rgb_image = rgb_image.astype(np.float64) / 255.0
+    return list(rgb_image.ravel())
+
+
 def pad_cropped_image_to_original(original_image, cropped_image):
     """
     Put the samller image in the top left corner and pad out to the
@@ -112,7 +134,7 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         .alias("Image")
     )
     end_time = datetime.now()
-    print(f"\tEnd Reading Images Time: {end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Reading Images:\t{end_time - start_time}", file=sys.stderr)
 
     # Crop the image to the Roi values provided in the dataset
     print(f"\tBegin Cropping Images", file=sys.stderr)
@@ -141,7 +163,7 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         (pl.col("Cropped_Width") * pl.col("Cropped_Height")).alias("Cropped_Resolution")
     )
     end_time = datetime.now()
-    print(f"\tEnd Cropping Images Time: {end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Cropping Images:\t{end_time - start_time}", file=sys.stderr)
 
     # Rescale the image to our standard size which is 64x64
     print(f"\tBegin Rescaling Images", file=sys.stderr)
@@ -166,7 +188,21 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
     )
     end_time = datetime.now()
-    print(f"\tEnd Rescaling Images Time: {end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Rescaling Images:\t{end_time - start_time}", file=sys.stderr)
+
+    print(f"\tBegin Histogram Stretching", file=sys.stderr)
+    start_time = datetime.now()
+    df = df.with_columns(
+        pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
+        .map_elements(
+            lambda x: stretch_histogram(
+                x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
+            )
+        )
+        .alias("Stretched_Histogram_Image")
+    )
+    end_time = datetime.now()
+    print(f"\tEnd Histgram Stretching:\t{end_time - start_time}", file=sys.stderr)
     return df
 
 
