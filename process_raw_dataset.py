@@ -217,10 +217,20 @@ def main():
         script_name = Path(__file__)
     else:
         script_name = Path("./process_raw_dataset.py")
+    script_dir = script_name.parent
+
+    train_parquet = script_dir.joinpath("Train.parquet")
+    test_parquet = script_dir.joinpath("Test.parquet")
 
     parser = argparse.ArgumentParser(description="Parse GTSRB dataset")
     parser.add_argument(
         "-r", dest="root_dir", help="dataset root directory", type=str, required=True
+    )
+    parser.add_argument(
+        "-f",
+        dest="force",
+        help="force overwrite of existing parquet files",
+        action="store_true",
     )
     args = parser.parse_args()
     prog_name = parser.prog
@@ -235,6 +245,10 @@ def main():
         exit(1)
     else:
         print(f"Preliminary Dataset Check Succeeded")
+
+    if train_parquet.exists() and test_parquet.exists() and not args.force:
+        print(f"Parquet files already exist. Use -f to force overwrite.")
+        exit(1)
 
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
