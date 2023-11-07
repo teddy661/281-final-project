@@ -73,6 +73,8 @@ def stretch_histogram(width, height, image: np.array) -> np.array:
     """
     Stretch the histogram of the image to the full range of 0-255
     For our data this appears to work much better than equalizing the histogram
+    We are only stretching the L channel of the LAB color space. This should 
+    preserve the possible the color information in the image.
     """
     restored_image = (restore_image_from_list(width, height, image) * 255).astype(
         np.uint8
