@@ -48,7 +48,7 @@ def crop_to_roi(
     return cropped_image_width, cropped_image_height, list(cropped_image.ravel())
 
 
-def rescale_image(width: int, height: int, image: list, standard=64):
+def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
     Use order = 5 for (Bi-quintic) #Very slow Super high quality result. Very slow
@@ -73,7 +73,7 @@ def stretch_histogram(width, height, image: np.array) -> np.array:
     """
     Stretch the histogram of the image to the full range of 0-255
     For our data this appears to work much better than equalizing the histogram
-    We are only stretching the L channel of the LAB color space. This should 
+    We are only stretching the L channel of the LAB color space. This should
     preserve the possible the color information in the image.
     """
     restored_image = (restore_image_from_list(width, height, image) * 255).astype(
@@ -92,7 +92,7 @@ def stretch_histogram(width, height, image: np.array) -> np.array:
     return list(rgb_image.ravel())
 
 
-def pad_cropped_image_to_original(original_image, cropped_image):
+def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
     """
     Put the samller image in the top left corner and pad out to the
     right and bottom with zeros to match the original image size.

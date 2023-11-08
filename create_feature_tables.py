@@ -69,6 +69,9 @@ def main():
     else:
         raise ValueError("Unknown target image")
 
+    # The dataset used for training will always have the columns
+    # "Width", "Height", "Image", "Resolution", "ClassId"
+    # which is the basis for feature generation
     train_df = train_df.drop(drop_columns)
     train_df = train_df.rename(rename_columns)
 
