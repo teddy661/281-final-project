@@ -110,7 +110,7 @@ def compute_hsv_histograms(image: np.array) -> np.array:
     return hue_hist, hue_edges, sat_hist, sat_edges, val_hist, val_edges
 
 
-def compute_lbp_image(image: np.array) -> np.array:
+def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     """
     Compute the LBP image for the image. After much trial and error
     the best parameters are:
@@ -123,7 +123,10 @@ def compute_lbp_image(image: np.array) -> np.array:
     n_points = 16
     l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
     lbp_image = local_binary_pattern(l_channel, n_points, radius, method="uniform")
-    return lbp_image
+    lbp_hist, lbp_edges = np.histogram(
+        lbp_image.ravel().astype(np.uint8), bins=18, range=(0, 18)
+    )
+    return lbp_image, lbp_hist, lbp_edges
 
 
 def normalize_histogram(hist: np.array) -> np.array:

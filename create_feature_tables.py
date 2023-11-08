@@ -10,7 +10,7 @@ from skimage.filters import farid, gaussian
 
 from create_feature_tools import (
     compute_hsv_histograms,
-    compute_lbp_image,
+    compute_lbp_image_and_histogram,
     create_hog_features,
     normalize_histogram,
     restore_image_from_list,
@@ -19,14 +19,14 @@ from create_feature_tools import (
 
 def main():
     # Read the parquet file, this takes a while. Leave it here
-    train_df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)
+    df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)
 
     source_image_columns = ["Stretched_Histogram_Image", "Scaled_image"]
 
     target_image = source_image_columns[0]  # 0 should be the default
 
     print(f"Using {target_image} as source image for feature generation")
-
+ 
     if target_image == source_image_columns[0]:
         drop_columns = [
             "Width",
@@ -81,9 +81,17 @@ def main():
     # The dataset used for training will always have the columns
     # "Width", "Height", "Image", "Resolution", "ClassId"
     # which is the basis for feature generation
-    train_df = train_df.drop(drop_columns)
-    train_df = train_df.rename(rename_columns)
+    df = df.drop(drop_columns)
+    df = df.rename(rename_columns)
 
-
+    df = df.with_columns(
+        pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
+        .map_elements(
+            lambda x: stretch_histogram(
+                x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
+            )
+        )
+        .alias("Stretched_Histogram_Image")
+    )
 if __name__ == "__main__":
     main()
