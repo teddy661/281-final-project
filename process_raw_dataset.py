@@ -35,7 +35,7 @@ def update_path(path: Path, root_dir: Path) -> Path:
 
 
 def restore_image_from_list(width: int, height: int, image: list) -> np.array:
-    return np.array(image).reshape((height, width, 3))
+    return np.array(image).reshape((height, width, 3)).astype(np.uint8)
 
 
 def crop_to_roi(
@@ -51,7 +51,7 @@ def crop_to_roi(
 def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
-    Use order = 5 for (Bi-quintic) #Very slow Super high quality result. Very slow
+    Use order = 5 for (Bi-quintic) #Very slow Super high quality result.
     Settle on 64x64 for our standard size after discussion with professor.
     There will be some cropping of the image, but we'll center the crop.
     Returns an image with the pixel values normalized betwen 0-1
@@ -66,29 +66,34 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     ]
     scaled_image_height = image.shape[0]
     scaled_image_width = image.shape[1]
+    image = np.clip((image * 255.0), 0, 255).astype(
+        np.uint8
+    )  # put it back to uint8 after scaling
     return scaled_image_width, scaled_image_height, list(image.ravel())
 
 
-def stretch_histogram(width, height, image: np.array) -> np.array:
+def stretch_histogram(width, height, image: np.array) -> list:
     """
+    Input a uint8 image
     Stretch the histogram of the image to the full range of 0-255
     For our data this appears to work much better than equalizing the histogram
     We are only stretching the L channel of the LAB color space. This should
     preserve the possible the color information in the image.
     """
-    restored_image = (restore_image_from_list(width, height, image) * 255).astype(
-        np.uint8
-    )
+    restored_image = restore_image_from_list(width, height, image)
     lab_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2LAB)
     l_channel = lab_image[:, :, 0]
-    stretched_l_channel = (
-        (l_channel - np.min(l_channel)) / (np.max(l_channel) - np.min(l_channel)) * 255
-    ).astype(np.uint8)
+    min_val = np.min(l_channel)
+    max_val = np.max(l_channel)
+    new_min = 0
+    new_max = 255
+    stretched_l_channel = ((l_channel - min_val) / (max_val - min_val)) * (
+        new_max - new_min
+    ) + new_min
     stretched_lab_image = np.stack(
         (stretched_l_channel, lab_image[:, :, 1], lab_image[:, :, 2]), axis=2
-    )
+    ).astype(np.uint8)
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
-    rgb_image = rgb_image.astype(np.float64) / 255.0
     return list(rgb_image.ravel())
 
 
@@ -96,6 +101,7 @@ def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
     """
     Put the samller image in the top left corner and pad out to the
     right and bottom with zeros to match the original image size.
+    Does not alter image dtype
     """
     target_shape = original_image.shape
 
@@ -128,11 +134,13 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
     # Read the image into a numpy array and store it as a flattened list
     # This allows pyarrow to store it correctly in the parquet file
     # Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
+    # Turns out this is stupid. Leave them all a 0-255
+    # PIL is faster than cv2 in reading images
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()
     df = df.with_columns(
         pl.col("Path")
-        .map_elements(lambda x: list((np.array(Image.open(x)) / 255.0).ravel()))
+        .map_elements(lambda x: list(np.array(Image.open(x)).ravel()))
         .alias("Image")
     )
     end_time = datetime.now()
