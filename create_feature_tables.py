@@ -8,6 +8,15 @@ from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import farid, gaussian
 
 
+from create_feature_tools import (
+    compute_hsv_histograms,
+    compute_lbp_image,
+    create_hog_features,
+    normalize_histogram,
+    restore_image_from_list,
+)
+
+
 def main():
     # Read the parquet file, this takes a while. Leave it here
     train_df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)

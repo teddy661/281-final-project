@@ -95,19 +95,19 @@ def compute_hsv_histograms(image: np.array) -> np.array:
     Compute the HSV histograms for the image
     """
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    h_bins = 180  # cv2 hue values are 0-179
-    s_bins = 256
-    v_bins = 256
 
-    h_range = [0, 180]
-    s_range = [0, 256]
-    v_range = [0, 256]
+    hue_hist, hue_edges = np.histogram(
+        hsv_image[:, :, 0].ravel(), bins=180, range=(0, 180)
+    )
 
-    ranges = [h_range, s_range, v_range]
-    hue_hist = cv2.calcHist([hsv_image], [0], None, [h_bins], h_range)
-    sat_hist = cv2.calcHist([hsv_image], [1], None, [s_bins], s_range)
-    val_hist = cv2.calcHist([hsv_image], [2], None, [v_bins], v_range)
-    return hue_hist, sat_hist, val_hist
+    sat_hist, sat_edges = np.histogram(
+        hsv_image[:, :, 1].ravel(), bins=256, range=(0, 256)
+    )
+
+    val_hist, val_edges = np.histogram(
+        hsv_image[:, :, 2].ravel(), bins=256, range=(0, 256)
+    )
+    return hue_hist, hue_edges, sat_hist, sat_edges, val_hist, val_edges
 
 
 def compute_lbp_image(image: np.array) -> np.array:
