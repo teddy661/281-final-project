@@ -260,6 +260,11 @@ def main():
         print(f"Parquet files already exist. Use -f to force overwrite.")
         exit(1)
 
+    if args.force:
+        print(f"Force revmoing existing files.")
+        train_parquet.unlink(missing_ok=True)
+        test_parquet.unlink(missing_ok=True)
+
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")
