@@ -76,6 +76,7 @@ def create_hog_features(image: np.array) -> np.array:
         visualize=True,
         channel_axis=-1,
     )
+    # HOG  Features is a 1-D 2916 element array
     return features_rgb, hog_image_rgb
 
 
@@ -126,7 +127,8 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     lbp_hist, lbp_edges = np.histogram(
         lbp_image.ravel().astype(np.uint8), bins=18, range=(0, 18)
     )
-    return lbp_image, lbp_hist, lbp_edges
+    # We can cast this to  unit8 because we know the range is 0-17
+    return lbp_image.astype(np.uint8), lbp_hist, lbp_edges
 
 
 def normalize_histogram(hist: np.array) -> np.array:
