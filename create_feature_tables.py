@@ -172,7 +172,7 @@ def hog_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
         )
         .alias("New_Cols")
     ).unnest("New_Cols")
-    df = df.drop("HOG_Image")
+    # df = df.drop("HOG_Image") # Keep the hog image for debugging
     return df
 
 

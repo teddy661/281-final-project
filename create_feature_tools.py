@@ -4,14 +4,16 @@ from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import farid, gaussian
 
 
-def restore_image_from_list(width: int, height: int, image: list) -> np.array:
+def restore_image_from_list(
+    width: int, height: int, image: list, num_channels: int = 3
+) -> np.array:
     """
     Images are stored as lists in the parquet file. This function creates a numpy,
     array reshapes it to the correct size using the width and height of the image.
     Expects the original image to be a 3 channel image. We ensure the images
     are always written to disk as uint8
     """
-    return np.array(image).reshape((height, width, 3)).astype(np.uint8)
+    return np.array(image).reshape((height, width, num_channels)).astype(np.uint8)
 
 
 def image_for_display(image: np.array) -> np.array:
