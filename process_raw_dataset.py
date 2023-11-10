@@ -1,13 +1,33 @@
 import argparse
 import sys
 from datetime import datetime
+from multiprocessing import Pool
 from pathlib import Path
 
 import cv2
 import numpy as np
 import polars as pl
+import psutil
 from PIL import Image
 from skimage.transform import rescale, rotate
+
+
+def parallelize_dataframe(df, func, n_cores=4):
+    rows_per_dataframe = df.height // n_cores
+    remainder = df.height % n_cores
+    num_rows = [rows_per_dataframe] * (n_cores - 1)
+    num_rows.append(rows_per_dataframe + remainder)
+    start_pos = [0]
+    for n in num_rows:
+        start_pos.append(start_pos[-1] + n)
+    df_split = []
+    for start, rows in zip(start_pos, num_rows):
+        df_split.append(df.slice(start, rows))
+    pool = Pool(n_cores)
+    new_df = pl.concat(pool.map(func, df_split))
+    pool.close()
+    pool.join()
+    return new_df
 
 
 def prelim_validate_dataset_dir(root_dir: Path) -> bool:
@@ -114,41 +134,26 @@ def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
     return return_array
 
 
-def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
+def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     """
-    Read the csv file into a polars dataframe.
-    Read the image into a numpy array and store it as a flattened list
-    This allows pyarrow to store it correctly in the parquet file
-    Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
-    Crop the image to the Roi values provided in the dataset
-    Rescale the image to our standard size which is 64x64
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one reads an image from disk and stores it as a flattened list in a column
     """
-    df = pl.read_csv(csv_file)
-    df = df.with_columns((pl.col("Width") * pl.col("Height")).alias("Resolution"))
-    # Update the path to be absolute so we're not passing around relative paths
-    # this makes the parquet file machine dependent
-    df = df.with_columns(
-        pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
-    )
-
-    # Read the image into a numpy array and store it as a flattened list
-    # This allows pyarrow to store it correctly in the parquet file
-    # Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
-    # Turns out this is stupid. Leave them all a 0-255
-    # PIL is faster than cv2 in reading images
-    print(f"\tBegin Reading Images", file=sys.stderr)
-    start_time = datetime.now()
     df = df.with_columns(
         pl.col("Path")
         .map_elements(lambda x: list(np.array(Image.open(x)).ravel()))
         .alias("Image")
     )
-    end_time = datetime.now()
-    print(f"\tEnd Reading Images:\t{end_time - start_time}", file=sys.stderr)
+    return df
 
-    # Crop the image to the Roi values provided in the dataset
-    print(f"\tBegin Cropping Images", file=sys.stderr)
-    start_time = datetime.now()
+
+def crop_to_roi_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one crops the image to the Roi values provided in the dataset
+    """
     df = df.with_columns(
         pl.struct(["Width", "Height", "Roi.Y1", "Roi.Y2", "Roi.X1", "Roi.X2", "Image"])
         .map_elements(
@@ -172,12 +177,15 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
     df = df.with_columns(
         (pl.col("Cropped_Width") * pl.col("Cropped_Height")).alias("Cropped_Resolution")
     )
-    end_time = datetime.now()
-    print(f"\tEnd Cropping Images:\t{end_time - start_time}", file=sys.stderr)
+    return df
 
-    # Rescale the image to our standard size which is 64x64
-    print(f"\tBegin Rescaling Images", file=sys.stderr)
-    start_time = datetime.now()
+
+def rescale_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one rescales the image to our standard size which is 64x64
+    """
     df = df.with_columns(
         pl.struct(["Cropped_Width", "Cropped_Height", "Cropped_Image"])
         .map_elements(
@@ -197,11 +205,15 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
     df = df.with_columns(
         (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
     )
-    end_time = datetime.now()
-    print(f"\tEnd Rescaling Images:\t{end_time - start_time}", file=sys.stderr)
+    return df
 
-    print(f"\tBegin Histogram Stretching", file=sys.stderr)
-    start_time = datetime.now()
+
+def stretch_histogram_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one stretches the histogram of the image to the full range of 0-255
+    """
     df = df.with_columns(
         pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
         .map_elements(
@@ -211,6 +223,55 @@ def process_csv(csv_file: Path, root_dir: Path) -> pl.DataFrame:
         )
         .alias("Stretched_Histogram_Image")
     )
+    return df
+
+
+def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
+    """
+    Read the csv file into a polars dataframe.
+    Read the image into a numpy array and store it as a flattened list
+    This allows pyarrow to store it correctly in the parquet file
+    Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
+    Crop the image to the Roi values provided in the dataset
+    Rescale the image to our standard size which is 64x64
+    """
+    df = pl.read_csv(csv_file)
+    df = df.with_columns((pl.col("Width") * pl.col("Height")).alias("Resolution"))
+    # Update the path to be absolute so we're not passing around relative paths
+    # this makes the parquet file machine dependent
+    df = df.with_columns(
+        pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
+    )
+
+    # Read the image into a numpy array and store it as a flattened list
+    # This allows pyarrow to store it correctly in the parquet file
+    # Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
+    # Turns out this is stupid. Leave them all a 0-255
+    # PIL is faster than cv2 in reading images
+    print(f"\tBegin Reading Images", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(f"\tEnd Reading Images:\t{end_time - start_time}", file=sys.stderr)
+
+    # Crop the image to the Roi values provided in the dataset
+    print(f"\tBegin Cropping Images", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, crop_to_roi_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(f"\tEnd Cropping Images:\t{end_time - start_time}", file=sys.stderr)
+
+    # Rescale the image to our standard size which is 64x64
+    print(f"\tBegin Rescaling Images", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, rescale_image_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(f"\tEnd Rescaling Images:\t{end_time - start_time}", file=sys.stderr)
+
+    # Stretch the histogram of the image to the full range of 0-255
+    print(f"\tBegin Histogram Stretching", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, stretch_histogram_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Histgram Stretching:\t{end_time - start_time}", file=sys.stderr)
     return df
@@ -261,14 +322,15 @@ def main():
         exit(1)
 
     if args.force:
-        print(f"Force revmoing existing files.")
+        print(f"Force removing existing files.")
         train_parquet.unlink(missing_ok=True)
         test_parquet.unlink(missing_ok=True)
 
+    num_cpus = psutil.cpu_count(logical=False)
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")
-    test_df = process_csv(test_csv, root_dir)
+    test_df = process_csv(test_csv, root_dir, num_cpus)
     train_end_time = datetime.now()
     print(
         f"End Processing test data Time: {train_end_time - train_start_time}",
@@ -288,7 +350,7 @@ def main():
     print(f"Begin Processing train data.", file=sys.stderr)
     test_start_time = datetime.now()
     train_csv = root_dir.joinpath("Train.csv")
-    train_df = process_csv(train_csv, root_dir)
+    train_df = process_csv(train_csv, root_dir, num_cpus)
     test_end_time = datetime.now()
     print(
         f"End Processing train data Time: {test_end_time - test_start_time}",
