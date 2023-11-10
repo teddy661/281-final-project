@@ -67,9 +67,8 @@ def parallelize_dataframe(df, func, n_cores=4):
     df_split = []
     for start, rows in zip(start_pos, num_rows):
         df_split.append(df.slice(start, rows))
-    new_df = pl.concat(df_split)
     pool = Pool(n_cores)
-    df = pl.concat(pool.map(func, df_split))
+    new_df = pl.concat(pool.map(func, df_split))
     pool.close()
     pool.join()
     return new_df
