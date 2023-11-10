@@ -307,6 +307,13 @@ def main():
         help="force overwrite of existing parquet files",
         action="store_true",
     )
+    parser.add_argument(
+        "-n",
+        dest="num_cpus",
+        help="number of cpus to use for parallel processing",
+        type=int,
+        default=None,
+    )
     args = parser.parse_args()
     prog_name = parser.prog
 
@@ -330,7 +337,18 @@ def main():
         train_parquet.unlink(missing_ok=True)
         test_parquet.unlink(missing_ok=True)
 
-    num_cpus = psutil.cpu_count(logical=False)
+    if args.num_cpus is not None:
+        num_cpus = args.num_cpus
+    else:
+        num_cpus = psutil.cpu_count(logical=False)
+
+    if num_cpus > 12 and args.num_cpus is None:
+        print(f"Number of cpus might be too high: {num_cpus}")
+        print(f"Forcing to 12 cpus")
+        print(f"Set number of cpus with -n option to override")
+        num_cpus = 12
+
+    print(f"Multiprocessing on {num_cpus} CPUs")
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")

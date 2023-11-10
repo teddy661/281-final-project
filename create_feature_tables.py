@@ -1,3 +1,4 @@
+import argparse
 import sys
 from datetime import datetime
 from multiprocessing import Pool
@@ -176,17 +177,39 @@ def hog_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Create Feature Tables from Training Data"
+    )
+    parser.add_argument(
+        "-n",
+        dest="num_cpus",
+        help="number of cpus to use for parallel processing",
+        type=int,
+        default=None,
+    )
+    args = parser.parse_args()
+    prog_name = parser.prog
     print(60 * "=", file=sys.stderr)
     script_start_time = datetime.now()
+    if args.num_cpus is not None:
+        num_cpus = args.num_cpus
+    else:
+        num_cpus = psutil.cpu_count(logical=False)
+
+    if num_cpus > 12 and args.num_cpus is None:
+        print(f"Number of cpus might be too high: {num_cpus}")
+        print(f"Forcing to 12 cpus")
+        print(f"Re-Run and set number of cpus with -n option to override")
+        num_cpus = 12
+
+    print(f"Multiprocessing on {num_cpus} CPUs")
     # Read the parquet file, this takes a while. Leave it here
     print(f"Begin Reading Parquet", file=sys.stderr)
     df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)
     print("End Reading Parquet", file=sys.stderr)
-    num_cpu = psutil.cpu_count(logical=False)
+
     source_image_columns = ["Stretched_Histogram_Image", "Scaled_image"]
-
     target_image = source_image_columns[0]  # 0 should be the default
-
     print(f"Using {target_image} as source image for feature generation")
 
     if target_image == source_image_columns[0]:
