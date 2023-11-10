@@ -275,21 +275,21 @@ def main():
     # HSV Histograms
     print(f"Begin Calulating HSV Histograms", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpu)
+    df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"End Calulating HSV Histograms:\t{end_time - start_time}", file=sys.stderr)
 
     # LBP Image and Histogram
     print(f"Begin Calulating LBP Histograms", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpu)
+    df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"End Calulating LBP Histograms:\t{end_time - start_time}", file=sys.stderr)
 
     # HOG Features
     print(f"Begin Calulating HOG Features", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpu)
+    df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"End Calulating HOG Features:\t{end_time - start_time}", file=sys.stderr)
 
