@@ -89,15 +89,13 @@ def main():
     script_dir = script_name.parent
     test_parquet = script_dir.joinpath("Test.parquet")
     df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
-    df2 = df.sample(1062, with_replacement=False)
     num_cpus = psutil.cpu_count(logical=False)
-    num_cpus = 8
 
-    result_dataframe = parallelize_dataframe(df2, do_something, 4)
+    result_dataframe = parallelize_dataframe(df, do_something, num_cpus)
     print(result_dataframe.columns)
     print(f"Result Shape: {result_dataframe.shape}")
-    print(f"Original Shape: {df2.shape}")
-    # check = (df2 == result_dataframe)
+    print(f"Original Shape: {df.shape}")
+    # check = (df == result_dataframe)
     # newcheck = (check == False).sum()
     # print((check == False).sum())
     # for col in check.columns:
