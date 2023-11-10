@@ -40,16 +40,16 @@ def prelim_validate_dataset_dir(root_dir: Path) -> bool:
     dirs = ["Meta", "Test", "Train"]
     for c_file in files:
         if not root_dir.joinpath(c_file).exists:
-            print(f"Required File is Missing: {c_file}")
+            print(f"Required File is Missing: {c_file}", file=sys.stderr)
             prelim_ready = False
     for c_dir in dirs:
         if not root_dir.joinpath(c_dir).exists:
-            print(f"Required Directory is Missing: {c_dir}")
+            print(f"Required Directory is Missing: {c_dir}", file=sys.stderr)
             prelim_ready = False
         elif c_dir == "Train":
             for d in range(43):
                 if not root_dir.joinpath(c_dir).joinpath(str(d)).exists:
-                    print("Required Directory is Missing: {d}")
+                    print("Required Directory is Missing: {d}", file=sys.stderr)
                     prelim_ready = False
     return prelim_ready
 
@@ -256,28 +256,28 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     start_time = datetime.now()
     df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"\tEnd Reading Images:\t{end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Reading Images:\t\t{end_time - start_time}", file=sys.stderr)
 
     # Crop the image to the Roi values provided in the dataset
     print(f"\tBegin Cropping Images", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, crop_to_roi_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"\tEnd Cropping Images:\t{end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Cropping Images:\t\t{end_time - start_time}", file=sys.stderr)
 
     # Rescale the image to our standard size which is 64x64
-    print(f"\tBegin Rescaling Images", file=sys.stderr)
+    print(f"\tBegin Re-scaling Images", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, rescale_image_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"\tEnd Rescaling Images:\t{end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
 
     # Stretch the histogram of the image to the full range of 0-255
     print(f"\tBegin Histogram Stretching", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, stretch_histogram_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"\tEnd Histgram Stretching:\t{end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
     return df
 
 
@@ -319,21 +319,23 @@ def main():
 
     root_dir = Path(args.root_dir)
     if not root_dir.exists:
-        print(f"Directory does not exit: {root_dir} ")
+        print(f"Directory does not exit: {root_dir} ", file=sys.stderr)
         exit(1)
     prelim_ready = prelim_validate_dataset_dir(root_dir)
     if not prelim_ready:
-        print(f"Preliminary Directory Check Failed")
+        print(f"Preliminary Directory Check Failed", file=sys.stderr)
         exit(1)
     else:
-        print(f"Preliminary Dataset Check Succeeded")
+        print(f"Preliminary Dataset Check Succeeded", file=sys.stderr)
 
     if train_parquet.exists() and test_parquet.exists() and not args.force:
-        print(f"Parquet files already exist. Use -f to force overwrite.")
+        print(
+            f"Parquet files already exist. Use -f to force overwrite.", file=sys.stderr
+        )
         exit(1)
 
     if args.force:
-        print(f"Force removing existing files.")
+        print(f"Force removing existing files.", file=sys.stderr)
         train_parquet.unlink(missing_ok=True)
         test_parquet.unlink(missing_ok=True)
 
@@ -343,54 +345,64 @@ def main():
         num_cpus = psutil.cpu_count(logical=False)
 
     if num_cpus > 12 and args.num_cpus is None:
-        print(f"Number of cpus might be too high: {num_cpus}")
-        print(f"Forcing to 12 cpus")
-        print(f"Set number of cpus with -n option to override")
+        print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
+        print(f"Forcing to 12 cpus", file=sys.stderr)
+        print(f"Set number of cpus with -n option to override", file=sys.stderr)
         num_cpus = 12
 
-    print(f"Multiprocessing on {num_cpus} CPUs")
+    print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")
     test_df = process_csv(test_csv, root_dir, num_cpus)
-    train_end_time = datetime.now()
-    print(
-        f"End Processing test data Time: {train_end_time - train_start_time}",
-        file=sys.stderr,
-    )
-    print(f"Begin Writing test data to parquet file", file=sys.stderr)
+
+    print(f"\tBegin Writing test data", file=sys.stderr)
+    start_time = datetime.now()
     test_df.write_parquet(
         "Test.parquet",
         compression="zstd",
         compression_level=5,
         use_pyarrow=True,
     )
+    end_time = datetime.now()
+    print(
+        f"\tEnd Writing test data:\t\t{end_time - start_time}",
+        file=sys.stderr,
+    )
+    train_end_time = datetime.now()
+    print(
+        f"End Processing test data:\t\t{train_end_time - train_start_time}",
+        file=sys.stderr,
+    )
     print(test_df.head())
     del test_df  # free up some memory
-    print(f"End Writing test data to parquet file.", file=sys.stderr)
 
     print(f"Begin Processing train data.", file=sys.stderr)
     test_start_time = datetime.now()
     train_csv = root_dir.joinpath("Train.csv")
     train_df = process_csv(train_csv, root_dir, num_cpus)
-    test_end_time = datetime.now()
-    print(
-        f"End Processing train data Time: {test_end_time - test_start_time}",
-        file=sys.stderr,
-    )
-    print(train_df.head())
-    print(f"Begin Writing train data to parquet file.", file=sys.stderr)
+    print(f"\tBegin Writing train data.", file=sys.stderr)
+    start_time = datetime.now()
     train_df.write_parquet(
         "Train.parquet",
         compression="zstd",
         compression_level=5,
         use_pyarrow=True,
     )
-    print(f"End Writing train data to parquet file.", file=sys.stderr)
-
+    end_time = datetime.now()
+    print(
+        f"\tEnd Writing train data:\t\t{end_time - start_time}",
+        file=sys.stderr,
+    )
+    test_end_time = datetime.now()
+    print(
+        f"End Processing train data:\t\t{test_end_time - test_start_time}",
+        file=sys.stderr,
+    )
+    print(train_df.head())
     script_end_time = datetime.now()
     print(
-        f"\n\nTotal Time elapsed: {script_end_time - script_start_time}",
+        f"\n\nTotal Time elapsed:\t\t{script_end_time - script_start_time}",
         file=sys.stderr,
     )
 
