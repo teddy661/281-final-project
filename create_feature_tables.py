@@ -189,7 +189,7 @@ def main():
     )
     args = parser.parse_args()
     prog_name = parser.prog
-    print(60 * "=", file=sys.stderr)
+    print(80 * "=", file=sys.stderr)
     script_start_time = datetime.now()
     if args.num_cpus is not None:
         num_cpus = args.num_cpus
@@ -197,12 +197,14 @@ def main():
         num_cpus = psutil.cpu_count(logical=False)
 
     if num_cpus > 12 and args.num_cpus is None:
-        print(f"Number of cpus might be too high: {num_cpus}")
-        print(f"Forcing to 12 cpus")
-        print(f"Re-Run and set number of cpus with -n option to override")
+        print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
+        print(f"Forcing to 12 cpus", file=sys.stderr)
+        print(
+            f"Re-Run and set number of cpus with -n option to override", file=sys.stderr
+        )
         num_cpus = 12
 
-    print(f"Multiprocessing on {num_cpus} CPUs")
+    print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
     # Read the parquet file, this takes a while. Leave it here
     print(f"Begin Reading Parquet", file=sys.stderr)
     df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)
@@ -210,7 +212,9 @@ def main():
 
     source_image_columns = ["Stretched_Histogram_Image", "Scaled_image"]
     target_image = source_image_columns[0]  # 0 should be the default
-    print(f"Using {target_image} as source image for feature generation")
+    print(
+        f"Using {target_image} as source image for feature generation", file=sys.stderr
+    )
 
     if target_image == source_image_columns[0]:
         drop_columns = [
@@ -266,45 +270,56 @@ def main():
     # The dataset used for training will always have the columns
     # "Width", "Height", "Image", "Resolution", "ClassId"
     # which is the basis for feature generation
-    print("Begin Adusting Columns")
+    print("\tBegin Adjusting Columns", file=sys.stderr)
     df = df.drop(drop_columns)
     df = df.rename(rename_columns)
-    print("End Adusting Columns")
+    print("\tEnd Adjusting Columns", file=sys.stderr)
     # df = df.sample(10, with_replacement=False)  # debugging
 
     # HSV Histograms
-    print(f"Begin Calulating HSV Histograms", file=sys.stderr)
+    print(f"\tBegin Calculating HSV Histograms", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"End Calulating HSV Histograms:\t{end_time - start_time}", file=sys.stderr)
+    print(
+        f"\tEnd Calculating HSV Histograms:\t\t{end_time - start_time}", file=sys.stderr
+    )
 
     # LBP Image and Histogram
-    print(f"Begin Calulating LBP Histograms", file=sys.stderr)
+    print(f"\tBegin Calculating LBP Histograms", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"End Calulating LBP Histograms:\t{end_time - start_time}", file=sys.stderr)
+    print(
+        f"\tEnd Calculating LBP Histograms:\t\t{end_time - start_time}", file=sys.stderr
+    )
 
     # HOG Features
-    print(f"Begin Calulating HOG Features", file=sys.stderr)
+    print(f"\tBegin Calculating HOG Features", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"End Calulating HOG Features:\t{end_time - start_time}", file=sys.stderr)
+    print(
+        f"\tEnd Calculating HOG Features:\t\t{end_time - start_time}", file=sys.stderr
+    )
 
     # Write the parquet file
-    print(f"Begin Writing feature data to parquet file.", file=sys.stderr)
+    print(f"\tBegin Writing feature data", file=sys.stderr)
+    start_time = datetime.now()
     df.write_parquet(
         "Features.parquet",
         compression="zstd",
         compression_level=5,
         use_pyarrow=True,
     )
-    print(f"End Writing feature data to parquet file.", file=sys.stderr)
+    end_time = datetime.now()
+    print(f"\tEnd Writing feature data:\t\t{end_time - start_time}", file=sys.stderr)
     script_end_time = datetime.now()
-    print(60 * "=", file=sys.stderr)
-    print(f"Script Duration:\t\t{script_end_time - script_start_time}", file=sys.stderr)
+    print(80 * "=", file=sys.stderr)
+    print(
+        f"Total Elapsed Time:\t\t\t\t{script_end_time - script_start_time}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

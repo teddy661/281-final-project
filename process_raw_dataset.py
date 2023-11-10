@@ -283,7 +283,7 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
 
 def main():
     script_start_time = start_time = datetime.now()
-
+    print(80 * "=", file=sys.stderr)
     try:
         __file__
     except NameError:
@@ -401,8 +401,9 @@ def main():
     )
     print(train_df.head())
     script_end_time = datetime.now()
+    print(80 * "=", file=sys.stderr)
     print(
-        f"\n\nTotal Time elapsed:\t\t\t{script_end_time - script_start_time}",
+        f"Total Elapsed Time:\t\t\t{script_end_time - script_start_time}",
         file=sys.stderr,
     )
 
