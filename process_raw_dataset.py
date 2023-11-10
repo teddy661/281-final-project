@@ -13,6 +13,10 @@ from skimage.transform import rescale, rotate
 
 
 def parallelize_dataframe(df, func, n_cores=4):
+    """
+    Enable parallel processing of a dataframe by splitting it by the number of cores
+    and then recombining the results.
+    """
     rows_per_dataframe = df.height // n_cores
     remainder = df.height % n_cores
     num_rows = [rows_per_dataframe] * (n_cores - 1)
