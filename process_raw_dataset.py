@@ -402,7 +402,7 @@ def main():
     print(train_df.head())
     script_end_time = datetime.now()
     print(
-        f"\n\nTotal Time elapsed:\t\t{script_end_time - script_start_time}",
+        f"\n\nTotal Time elapsed:\t\t\t{script_end_time - script_start_time}",
         file=sys.stderr,
     )
 
