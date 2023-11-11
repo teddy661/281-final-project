@@ -80,7 +80,7 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     Settle on 64x64 for our standard size after discussion with professor.
     There will be some cropping of the image, but we'll center the crop.
     This function will take an input image for type uint8 or float(64,32)
-    and always return an image of dtype float64 which we truncate back to float64
+    and always return an image of dtype float64 which we truncate back to float32
     which is our standard image format due to cvtColor limitations
     """
     image = restore_image_from_list(width, height, image)
@@ -127,7 +127,7 @@ def stretch_histogram(width, height, image: np.array) -> list:
         (stretched_l_channel, lab_image[:, :, 1], lab_image[:, :, 2]), axis=2
     )
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
-    # convert back to float64 to store it to disk
+    # convert back to float32 to store it to disk
     return list((rgb_image.astype(np.float32) / 255.0).ravel())
 
 

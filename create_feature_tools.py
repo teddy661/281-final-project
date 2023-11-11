@@ -11,20 +11,13 @@ def restore_image_from_list(
     Images are stored as lists in the parquet file. This function creates a numpy,
     array reshapes it to the correct size using the width and height of the image.
     Expects the original image to be a 3 channel image. We ensure the images
-    are always written to disk as float64. This function reshapes it back to an image
+    are always written to disk as float32. This function reshapes it back to an image
     the dtype is not altered.
 
     There's something really odd in here. When I run this in ipython everything works
-    when I run the script it always returns a float64. We'll just force it to float64
+    when I run the script it always returns a float64. We'll just force it to float32
     """
     return np.asarray(image, dtype=np.float32).reshape((height, width, num_channels))
-
-
-def image_for_display(image: np.array) -> np.array:
-    """
-    Convert image to 0-255 range with type np.uint8
-    """
-    return np.clip((image * 255.0), 0, 255).astype(np.uint8)
 
 
 def blur_image(image: np.array, sigma=2) -> np.array:
@@ -106,15 +99,15 @@ def compute_hsv_histograms(image: np.array) -> np.array:
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
     hue_hist, hue_edges = np.histogram(
-        hsv_image[:, :, 0].ravel(), bins=180, range=(0, 180)
+        hsv_image[:, :, 0].astype(np.uint8).ravel(), bins=180, range=(0, 180)
     )
 
     sat_hist, sat_edges = np.histogram(
-        hsv_image[:, :, 1].ravel(), bins=256, range=(0, 256)
+        hsv_image[:, :, 1].astype(np.uint8).ravel(), bins=256, range=(0, 256)
     )
 
     val_hist, val_edges = np.histogram(
-        hsv_image[:, :, 2].ravel(), bins=256, range=(0, 256)
+        hsv_image[:, :, 2].astype(np.uint8).ravel(), bins=256, range=(0, 256)
     )
     return hue_hist, hue_edges, sat_hist, sat_edges, val_hist, val_edges
 
