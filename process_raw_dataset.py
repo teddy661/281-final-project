@@ -100,9 +100,9 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     )
 
 
-def stretch_histogram(width, height, image: np.array) -> list:
+def stretch_histogram(width: int, height: int, image: np.array) -> list:
     """
-    Input a float64 image
+    Input a float32 image
     Stretch the histogram of the image to the full range of 0-1
     For our data this appears to work much better than equalizing the histogram
     We are only stretching the L channel of the LAB color space. This should
@@ -129,6 +129,24 @@ def stretch_histogram(width, height, image: np.array) -> list:
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
     # convert back to float32 to store it to disk
     return list((rgb_image.astype(np.float32) / 255.0).ravel())
+
+
+def apply_clahe(width: int, height: int, image: np.array) -> list:
+    """
+    Input a float32 image
+    see if better results with CLAHE
+    CLAHE introduces a lot of noise in the image even though
+    the contrast is better. Not using it for now
+    """
+    restored_image = restore_image_from_list(width, height, image)
+    restored_uint8 = (restored_image * 255.0).astype(np.uint8)
+    hsv_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2HSV)
+    brightness = hsv_image[:, :, 2]
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    cl1 = clahe.apply(brightness)
+    new_hsv_image = np.stack((hsv_image[:, :, 0], hsv_image[:, :, 1], cl1), axis=2)
+    new_rgb_image = cv2.cvtColor(new_hsv_image, cv2.COLOR_HSV2RGB)
+    return list((new_rgb_image.astype(np.float32) / 255.0).ravel())
 
 
 def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
