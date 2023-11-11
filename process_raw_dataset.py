@@ -96,7 +96,7 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     return (
         scaled_image_width,
         scaled_image_height,
-        list(image.astype(np.float64).ravel()),
+        list(image.astype(np.float32).ravel()),
     )
 
 
@@ -128,7 +128,7 @@ def stretch_histogram(width, height, image: np.array) -> list:
     )
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
     # convert back to float64 to store it to disk
-    return list((rgb_image.astype(np.float64) / 255.0).ravel())
+    return list((rgb_image.astype(np.float32) / 255.0).ravel())
 
 
 def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
@@ -159,7 +159,7 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     df = df.with_columns(
         pl.col("Path")
         .map_elements(
-            lambda x: list(np.array(Image.open(x), dtype=np.float64).ravel() / 255.0)
+            lambda x: list(np.array(Image.open(x), dtype=np.float32).ravel() / 255.0)
         )
         .alias("Image")
     )

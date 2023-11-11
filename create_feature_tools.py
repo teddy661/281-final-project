@@ -17,7 +17,7 @@ def restore_image_from_list(
     There's something really odd in here. When I run this in ipython everything works
     when I run the script it always returns a float64. We'll just force it to float64
     """
-    return np.asarray(image, dtype=np.float64).reshape((height, width, num_channels))
+    return np.asarray(image, dtype=np.float32).reshape((height, width, num_channels))
 
 
 def image_for_display(image: np.array) -> np.array:
@@ -144,6 +144,6 @@ def normalize_histogram(hist: np.array) -> np.array:
     """
     Normalize the histogram or any array really
     """
-    n_hist = hist.astype(np.float64)
+    n_hist = hist.astype(np.float32)
     n_hist /= n_hist.sum() + 1e-6
     return n_hist
