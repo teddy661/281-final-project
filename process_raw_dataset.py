@@ -10,6 +10,7 @@ import polars as pl
 import psutil
 from PIL import Image
 from skimage.transform import rescale, rotate
+from create_feature_tools import restore_image_from_list
 
 
 def parallelize_dataframe(df, func, n_cores=4):
@@ -58,13 +59,13 @@ def update_path(path: Path, root_dir: Path) -> Path:
     return str(root_dir.joinpath(path).resolve())
 
 
-def restore_image_from_list(width: int, height: int, image: list) -> np.array:
-    return np.array(image).reshape((height, width, 3)).astype(np.uint8)
-
-
 def crop_to_roi(
     width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list
 ) -> tuple:
+    """
+    Crops the image to the Roi values provided in the dataset.
+    Does not alter the image dtype
+    """
     image = restore_image_from_list(width, height, image)
     cropped_image = image[y1 : y2 + 1, x1 : x2 + 1, :]
     cropped_image_height = cropped_image.shape[0]
@@ -78,7 +79,9 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     Use order = 5 for (Bi-quintic) #Very slow Super high quality result.
     Settle on 64x64 for our standard size after discussion with professor.
     There will be some cropping of the image, but we'll center the crop.
-    Returns an image with the pixel values normalized betwen 0-1
+    This function will take an input image for type uint8 or float(64,32)
+    and always return an image of dtype float64 which we truncate back to float64
+    which is our standard image format due to cvtColor limitations
     """
     image = restore_image_from_list(width, height, image)
     scale = standard / min(image.shape[:2])
@@ -90,35 +93,42 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
     ]
     scaled_image_height = image.shape[0]
     scaled_image_width = image.shape[1]
-    image = np.clip((image * 255.0), 0, 255).astype(
-        np.uint8
-    )  # put it back to uint8 after scaling
-    return scaled_image_width, scaled_image_height, list(image.ravel())
+    return (
+        scaled_image_width,
+        scaled_image_height,
+        list(image.astype(np.float64).ravel()),
+    )
 
 
 def stretch_histogram(width, height, image: np.array) -> list:
     """
-    Input a uint8 image
-    Stretch the histogram of the image to the full range of 0-255
+    Input a float64 image
+    Stretch the histogram of the image to the full range of 0-1
     For our data this appears to work much better than equalizing the histogram
     We are only stretching the L channel of the LAB color space. This should
-    preserve the possible the color information in the image.
+    preserve the possible the color information in the image. The highest precision
+    supported by cvtColor.
     """
     restored_image = restore_image_from_list(width, height, image)
-    lab_image = cv2.cvtColor(restored_image, cv2.COLOR_RGB2LAB)
+    restored_uint8 = (restored_image * 255.0).astype(np.uint8)
+    lab_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2LAB)
     l_channel = lab_image[:, :, 0]
     min_val = np.min(l_channel)
     max_val = np.max(l_channel)
     new_min = 0
-    new_max = 255
-    stretched_l_channel = ((l_channel - min_val) / (max_val - min_val)) * (
-        new_max - new_min
-    ) + new_min
+    new_max = 100
+    # stretched_l_channel = ((l_channel - min_val) / (max_val - min_val)) * (
+    #    new_max - new_min
+    # ) + new_min
+    stretched_l_channel = np.interp(
+        l_channel, (min_val, max_val), (new_min, new_max)
+    ).astype(lab_image.dtype)
     stretched_lab_image = np.stack(
         (stretched_l_channel, lab_image[:, :, 1], lab_image[:, :, 2]), axis=2
-    ).astype(np.uint8)
+    )
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
-    return list(rgb_image.ravel())
+    # convert back to float64 to store it to disk
+    return list((rgb_image.astype(np.float64) / 255.0).ravel())
 
 
 def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
@@ -142,11 +152,15 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
-    This one reads an image from disk and stores it as a flattened list in a column
+    This one reads an image from disk and stores it as a flattened list in a column.
+    We convert the image to float32 and normalize it to the range of 0-1. cvtColor is which
+    we use extensively only supports max precision of float32.
     """
     df = df.with_columns(
         pl.col("Path")
-        .map_elements(lambda x: list(np.array(Image.open(x)).ravel()))
+        .map_elements(
+            lambda x: list(np.array(Image.open(x), dtype=np.float64).ravel() / 255.0)
+        )
         .alias("Image")
     )
     return df
@@ -248,9 +262,9 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     )
 
     # Read the image into a numpy array and store it as a flattened list
-    # This allows pyarrow to store it correctly in the parquet file
-    # Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
-    # Turns out this is stupid. Leave them all a 0-255
+    # This allows pyarrow to store it correctly in the parquet file.
+    # Change the Entire pipline back to storing the image as a list of float64
+    # Deal with conversion whenever we deal with cvtColor
     # PIL is faster than cv2 in reading images
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()

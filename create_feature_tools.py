@@ -11,9 +11,13 @@ def restore_image_from_list(
     Images are stored as lists in the parquet file. This function creates a numpy,
     array reshapes it to the correct size using the width and height of the image.
     Expects the original image to be a 3 channel image. We ensure the images
-    are always written to disk as uint8
+    are always written to disk as float64. This function reshapes it back to an image
+    the dtype is not altered.
+
+    There's something really odd in here. When I run this in ipython everything works
+    when I run the script it always returns a float64. We'll just force it to float64
     """
-    return np.array(image).reshape((height, width, num_channels)).astype(np.uint8)
+    return np.asarray(image, dtype=np.float64).reshape((height, width, num_channels))
 
 
 def image_for_display(image: np.array) -> np.array:
@@ -35,6 +39,7 @@ def edge_detection(image: np.array) -> np.array:
     Look at Canny and Farid Edge Detection algorithms. Farid was better for our use
     case, but doesn't give us anythong above and beyond our LPB feature.
     """
+    image = (image * 255.0).astype(np.uint8)
     l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
     # return farid(l_channel, axis=-1)
     return canny(l_channel, sigma=3)
@@ -44,15 +49,15 @@ def convert_to_lab(image: np.array) -> np.array:
     """
     Take an existing RGB image and convert it to LAB color space
     """
-    if image.dtype != np.uint8:
-        image = image.astype(np.float64) * 255.0
-    return cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_RGB2LAB)
+    image = (image * 255.0).astype(np.uint8)
+    return cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
 
 
 def create_local_binary_pattern(image: np.array) -> np.array:
     """
     Create the local binary pattern for the image
     """
+    image = (image * 255.0).astype(np.uint8)
     l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
     return local_binary_pattern(l_channel, 8, 1, method="uniform")
 
@@ -97,6 +102,7 @@ def compute_hsv_histograms(image: np.array) -> np.array:
     """
     Compute the HSV histograms for the image
     """
+    image = (image * 255.0).astype(np.uint8)
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
     hue_hist, hue_edges = np.histogram(
@@ -124,6 +130,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     """
     radius = 3
     n_points = 16
+    image = (image * 255.0).astype(np.uint8)
     l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
     lbp_image = local_binary_pattern(l_channel, n_points, radius, method="uniform")
     lbp_hist, lbp_edges = np.histogram(
