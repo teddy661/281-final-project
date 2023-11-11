@@ -187,6 +187,12 @@ def main():
         type=int,
         default=None,
     )
+    parser.add_argument(
+        "-f",
+        dest="force",
+        help="force overwrite of existing parquet files",
+        action="store_true",
+    )
     args = parser.parse_args()
     prog_name = parser.prog
     print(80 * "=", file=sys.stderr)
@@ -204,10 +210,26 @@ def main():
         )
         num_cpus = 12
 
+    train_parquet = Path("Train.parquet")
+    features_parquet = Path("Features.parquet")
+
+    if not train_parquet.exists():
+        print(f"FATAL: Training file is missing: {train_parquet}", file=sys.stderr)
+        exit(1)
+
+    if features_parquet.exists() and not args.force:
+        print(
+            f"FATAL: Features parquet files already exist. Use -f to force overwrite.",
+            file=sys.stderr,
+        )
+        exit(1)
+    if args.force:
+        print(f"Force removing existing files.", file=sys.stderr)
+        features_parquet.unlink(missing_ok=True)
     print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
     # Read the parquet file, this takes a while. Leave it here
     print(f"Begin Reading Parquet", file=sys.stderr)
-    df = pl.read_parquet("Train.parquet", use_pyarrow=True, memory_map=True)
+    df = pl.read_parquet(train_parquet, use_pyarrow=True, memory_map=True)
     print("End Reading Parquet", file=sys.stderr)
 
     source_image_columns = ["Stretched_Histogram_Image", "Scaled_image"]

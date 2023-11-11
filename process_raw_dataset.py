@@ -330,7 +330,8 @@ def main():
 
     if train_parquet.exists() and test_parquet.exists() and not args.force:
         print(
-            f"Parquet files already exist. Use -f to force overwrite.", file=sys.stderr
+            f"FATAL: Parquet files already exist. Use -f to force overwrite.",
+            file=sys.stderr,
         )
         exit(1)
 
@@ -359,7 +360,7 @@ def main():
     print(f"\tBegin Writing test data", file=sys.stderr)
     start_time = datetime.now()
     test_df.write_parquet(
-        "Test.parquet",
+        test_parquet,
         compression="zstd",
         compression_level=5,
         use_pyarrow=True,
@@ -384,7 +385,7 @@ def main():
     print(f"\tBegin Writing train data.", file=sys.stderr)
     start_time = datetime.now()
     train_df.write_parquet(
-        "Train.parquet",
+        train_parquet,
         compression="zstd",
         compression_level=5,
         use_pyarrow=True,
