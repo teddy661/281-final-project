@@ -103,11 +103,11 @@ def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
 def stretch_histogram(width: int, height: int, image: np.array) -> list:
     """
     Input a float32 image
-    Stretch the histogram of the image to the full range of 0-1
+    Stretch the histogram of the image to the full range of 0-100
     For our data this appears to work much better than equalizing the histogram
     We are only stretching the L channel of the LAB color space. This should
     preserve the possible the color information in the image. The highest precision
-    supported by cvtColor.
+    supported by cvtColor. Abandon this in favor of HSV
     """
     restored_image = restore_image_from_list(width, height, image)
     restored_uint8 = (restored_image * 255.0).astype(np.uint8)
@@ -129,6 +129,34 @@ def stretch_histogram(width: int, height: int, image: np.array) -> list:
     rgb_image = cv2.cvtColor(stretched_lab_image, cv2.COLOR_LAB2RGB)
     # convert back to float32 to store it to disk
     return list((rgb_image.astype(np.float32) / 255.0).ravel())
+
+
+def stretch_histogram_hsv(width: int, height: int, image: np.array) -> list:
+    """
+    Input a float32 image
+    Stretch the histogram of the image to the full range of 0-1
+    For our data this appears to work much better than equalizing the histogram
+    We are only stretching the V channel of the HSV color space. This should
+    preserve the possible the color information in the image. The highest precision
+    supported by cvtColor. Prefer this over LAB stretching for the image data
+    we have
+    """
+    restored_image = restore_image_from_list(width, height, image)
+    restored_uint8 = (restored_image * 255.0).astype(np.uint8)
+    hsv_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2HSV)
+    brightness = hsv_image[:, :, 2]
+    min_val = np.min(brightness)
+    max_val = np.max(brightness)
+    new_min = 0
+    new_max = 255
+    stretched_v_channel = np.interp(
+        brightness, (min_val, max_val), (new_min, new_max)
+    ).astype(brightness.dtype)
+    stretched_hsv_image = np.stack(
+        (hsv_image[:, :, 0], hsv_image[:, :, 1], stretched_v_channel), axis=2
+    )
+    new_rgb_image = cv2.cvtColor(stretched_hsv_image, cv2.COLOR_HSV2RGB)
+    return list((new_rgb_image.astype(np.float32) / 255.0).ravel())
 
 
 def apply_clahe(width: int, height: int, image: np.array) -> list:
@@ -244,7 +272,7 @@ def rescale_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def stretch_histogram_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def stretch_histogram_lab_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -254,6 +282,24 @@ def stretch_histogram_wrapper(df: pl.DataFrame) -> pl.DataFrame:
         pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
         .map_elements(
             lambda x: stretch_histogram(
+                x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
+            )
+        )
+        .alias("Stretched_LAB_Histogram_Image")
+    )
+    return df
+
+
+def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one stretches the histogram of the image to the full range of 0-255
+    """
+    df = df.with_columns(
+        pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
+        .map_elements(
+            lambda x: stretch_histogram_hsv(
                 x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
             )
         )
@@ -304,12 +350,20 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     end_time = datetime.now()
     print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
 
-    # Stretch the histogram of the image to the full range of 0-255
-    print(f"\tBegin Histogram Stretching", file=sys.stderr)
+    # Stretch the histogram of the image to the full range of 0-100 in L Channel
+    # This was abandoned in favor of stretching the V channel in HSV
+    # print(f"\tBegin Histogram Stretching", file=sys.stderr)
+    # start_time = datetime.now()
+    # df = parallelize_dataframe(df, stretch_histogram_wrapper, num_cpus)
+    # end_time = datetime.now()
+    # print(f"\tEnd Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
+
+    # Stretch the histogram of the image to the full range of 0-255 in V Channel
+    print(f"\tBegin HSV Histogram Stretching", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, stretch_histogram_wrapper, num_cpus)
+    df = parallelize_dataframe(df, stretch_histogram_hsv_wrapper, num_cpus)
     end_time = datetime.now()
-    print(f"\tEnd Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
+    print(f"\tEnd HSV Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
     return df
 
 
