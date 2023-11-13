@@ -275,6 +275,16 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
 
 
 def main():
+    try:
+        __file__
+    except NameError:
+        __file__ = None
+    if __file__ is not None:
+        script_name = Path(__file__)
+    else:
+        script_name = Path("./process_raw_dataset.py")
+    script_dir = script_name.parent
+
     parser = argparse.ArgumentParser(
         description="Create Feature Tables from Training Data"
     )
@@ -308,11 +318,11 @@ def main():
         )
         num_cpus = 12
 
-    train_parquet = Path("Train.parquet")
-    train_features_parquet = Path("train_features.parquet")
+    train_parquet = script_dir.joinpath("data/train.parquet")
+    train_features_parquet = script_dir.joinpath("data/train_features.parquet")
 
-    test_parquet = Path("Test.parquet")
-    test_features_parquet = Path("test_features.parquet")
+    test_parquet = script_dir.joinpath("data/Test.parquet")
+    test_features_parquet = script_dir.joinpath("data/test_features.parquet")
 
     if not train_parquet.exists():
         print(f"FATAL: Training file is missing: {train_parquet}", file=sys.stderr)
@@ -399,7 +409,7 @@ def main():
     )
     end_time = datetime.now()
     print(
-        f"\tEnd Writing Training feature data:\t\t{end_time - start_time}",
+        f"\tEnd Writing Training feature data:\t{end_time - start_time}",
         file=sys.stderr,
     )
 

@@ -380,8 +380,8 @@ def main():
         script_name = Path("./process_raw_dataset.py")
     script_dir = script_name.parent
 
-    train_parquet = script_dir.joinpath("Train.parquet")
-    test_parquet = script_dir.joinpath("Test.parquet")
+    train_parquet = script_dir.joinpath("data/train.parquet")
+    test_parquet = script_dir.joinpath("data/test.parquet")
 
     parser = argparse.ArgumentParser(description="Parse GTSRB dataset")
     parser.add_argument(

@@ -2,9 +2,10 @@
 sign_data.7z
 sign_data/
 sign_data.h5
-Train.parquet
-Test.parquet
-Features.parquet
+data/train.parquet
+data/train_features.parquet
+data/test.parquet
+data/test_features.parquet
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
