@@ -2,6 +2,64 @@ import cv2
 import numpy as np
 from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import farid, gaussian
+from multiprocessing import Pool
+import polars as pl
+
+
+def parallelize_dataframe(df, func, n_cores=4):
+    """
+    Enable parallel processing of a dataframe by splitting it by the number of cores
+    and then recombining the results.
+    """
+    rows_per_dataframe = df.height // n_cores
+    remainder = df.height % n_cores
+    num_rows = [rows_per_dataframe] * (n_cores - 1)
+    num_rows.append(rows_per_dataframe + remainder)
+    start_pos = [0]
+    for n in num_rows:
+        start_pos.append(start_pos[-1] + n)
+    df_split = []
+    for start, rows in zip(start_pos, num_rows):
+        df_split.append(df.slice(start, rows))
+    pool = Pool(n_cores)
+    new_df = pl.concat(pool.map(func, df_split))
+    pool.close()
+    pool.join()
+    return new_df
+
+
+def restore_all_images_from_list(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one restores all the images to numpy format after reading
+    """
+    columns_to_restore = [
+        "Image",
+        "Cropped_Image",
+        "Scaled_image",
+        "Stretched_Histogram_Image",
+    ]
+    related_columns = [
+        ["Width", "Height"],
+        ["Cropped_Width", "Cropped_Height"],
+        ["Scaled_Width", "Scaled_Height"],
+        ["Scaled_Width", "Scaled_Height"],
+    ]
+    for i, col in enumerate(columns_to_restore):
+        related_columns[i].append(col)
+        df = df.with_columns(
+            pl.struct(related_columns[i])
+            .map_elements(
+                lambda x: restore_image_from_list(
+                    related_columns[i][0], related_columns[i][1], related_columns[i][2]
+                )
+            )
+            .alias("Images_Restored")
+        )
+        df.drop(related_columns[i][2])
+        df.rename({"Images_Restored": related_columns[i][2]})
+    return df
 
 
 def restore_image_from_list(
