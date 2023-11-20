@@ -1,11 +1,12 @@
-import polars as pl 
-import numpy as np 
+import polars as pl
+import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
 from datetime import datetime
 from pathlib import Path
 import cv2
-from io import BytesIO 
+from io import BytesIO
+
 
 def parallelize_dataframe(df, func, n_cores=4):
     """
@@ -28,6 +29,7 @@ def parallelize_dataframe(df, func, n_cores=4):
     pool.join()
     return new_df
 
+
 def restore_image_from_list(
     width: int, height: int, image: list, num_channels: int = 3
 ) -> np.array:
@@ -42,6 +44,7 @@ def restore_image_from_list(
     when I run the script it always returns a float64. We'll just force it to float32
     """
     return np.asarray(image, dtype=np.float32).reshape((height, width, num_channels))
+
 
 def restore_image_from_list(
     width: int, height: int, image: list, num_channels: int = 3
@@ -72,9 +75,11 @@ def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
                 x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
             )
         )
-        .alias("Unpacked_Image").cast(pl.Binary)
+        .alias("Unpacked_Image")
+        .cast(pl.Binary)
     )
     return df
+
 
 def do_convert(width, height, x):
     mem_file = BytesIO()
@@ -82,18 +87,21 @@ def do_convert(width, height, x):
     np.save(mem_file, img)
     return mem_file.getvalue()
 
+
 def convert_to_bytes(df):
     mem_file = BytesIO()
     df = df.with_columns(
-         pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
+        pl.struct(["Scaled_Width", "Scaled_Height", "Scaled_Image"])
         .map_elements(
             lambda x: do_convert(
                 x["Scaled_Width"], x["Scaled_Height"], x["Scaled_Image"]
             )
         )
-        .alias("BytesIo").cast(pl.Binary)
+        .alias("BytesIo")
+        .cast(pl.Binary)
     )
     return df
+
 
 def main():
     num_cpus = 8
@@ -101,7 +109,7 @@ def main():
     test_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
     print(test_df.head())
     print(test_df.columns)
-    print(80*"-")
+    print(80 * "-")
     test_df = parallelize_dataframe(test_df, convert_to_bytes, num_cpus)
     print(test_df.head())
     print(test_df.columns)
@@ -110,5 +118,7 @@ def main():
     bytes = BytesIO(test_df["BytesIo"][0])
     image = np.load(bytes)
     print(image.shape)
+
+
 if __name__ == "__main__":
     main()
