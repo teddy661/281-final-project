@@ -4,9 +4,10 @@ from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import farid, gaussian
 from multiprocessing import Pool
 import polars as pl
+from typing import Callable
 
 
-def parallelize_dataframe(df, func, n_cores=4):
+def parallelize_dataframe(df: pl.DataFrame, func: Callable[[pl.DataFrame], pl.DataFrame], n_cores: int=4) -> pl.DataFrame:
     """
     Enable parallel processing of a dataframe by splitting it by the number of cores
     and then recombining the results.

@@ -330,7 +330,7 @@ def main():
     ## command line option to select the image. "Stretched_Histogram_Image" is
     ## the default. If you want to use "Scaled_Image" then change the line below
     ## to:
-    ## target_image = source_image_columns[1]
+    ## target_image = source_image_columns[0]
     source_image_columns = ["Scaled_image"]
     target_image = source_image_columns[0]  # 0 should be the default
     print(
