@@ -1,13 +1,17 @@
-import cv2
-import numpy as np
-from skimage.feature import canny, hog, local_binary_pattern
-from skimage.filters import farid, gaussian
+from io import BytesIO
 from multiprocessing import Pool
-import polars as pl
 from typing import Callable
 
+import cv2
+import numpy as np
+import polars as pl
+from skimage.feature import canny, hog, local_binary_pattern
+from skimage.filters import farid, gaussian
 
-def parallelize_dataframe(df: pl.DataFrame, func: Callable[[pl.DataFrame], pl.DataFrame], n_cores: int=4) -> pl.DataFrame:
+
+def parallelize_dataframe(
+    df: pl.DataFrame, func: Callable[[pl.DataFrame], pl.DataFrame], n_cores: int = 4
+) -> pl.DataFrame:
     """
     Enable parallel processing of a dataframe by splitting it by the number of cores
     and then recombining the results.
@@ -29,57 +33,7 @@ def parallelize_dataframe(df: pl.DataFrame, func: Callable[[pl.DataFrame], pl.Da
     return new_df
 
 
-def restore_all_images_from_list(df: pl.DataFrame) -> pl.DataFrame:
-    """
-    To parallelize the workflow each of the functions previously defined needs
-    to be wrapped in a function that takes a dataframe and returns a dataframe.
-    This one restores all the images to numpy format after reading
-    """
-    columns_to_restore = [
-        "Image",
-        "Cropped_Image",
-        "Scaled_image",
-        "Stretched_Histogram_Image",
-    ]
-    related_columns = [
-        ["Width", "Height"],
-        ["Cropped_Width", "Cropped_Height"],
-        ["Scaled_Width", "Scaled_Height"],
-        ["Scaled_Width", "Scaled_Height"],
-    ]
-    for i, col in enumerate(columns_to_restore):
-        related_columns[i].append(col)
-        df = df.with_columns(
-            pl.struct(related_columns[i])
-            .map_elements(
-                lambda x: restore_image_from_list(
-                    related_columns[i][0], related_columns[i][1], related_columns[i][2]
-                )
-            )
-            .alias("Images_Restored")
-        )
-        df.drop(related_columns[i][2])
-        df.rename({"Images_Restored": related_columns[i][2]})
-    return df
-
-
-def restore_image_from_list(
-    width: int, height: int, image: list, num_channels: int = 3
-) -> np.array:
-    """
-    Images are stored as lists in the parquet file. This function creates a numpy,
-    array reshapes it to the correct size using the width and height of the image.
-    Expects the original image to be a 3 channel image. We ensure the images
-    are always written to disk as float32. This function reshapes it back to an image
-    the dtype is not altered.
-
-    There's something really odd in here. When I run this in ipython everything works
-    when I run the script it always returns a float64. We'll just force it to float32
-    """
-    return np.asarray(image, dtype=np.float32).reshape((height, width, num_channels))
-
-
-def blur_image(image: np.array, sigma=2) -> np.array:
+def blur_image(image: np.array, sigma: int = 2) -> np.array:
     """
     Blur the image to remove noise
     """
@@ -152,7 +106,8 @@ def perform_sift(image: np.array) -> tuple:
 
 def compute_hsv_histograms(image: np.array) -> np.array:
     """
-    Compute the HSV histograms for the image
+    Compute the HSV histograms for the image. Convert image to 255 scale
+    Change Color Space to HSV, return histograms and edges
     """
     image = (image * 255.0).astype(np.uint8)
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -171,12 +126,23 @@ def compute_hsv_histograms(image: np.array) -> np.array:
     return hue_hist, hue_edges, sat_hist, sat_edges, val_hist, val_edges
 
 
+def convert_numpy_to_bytesio(image: np.array) -> bytes:
+    """
+    Save a numpy array to a BytesIO object
+    """
+    mem_file = BytesIO()
+    np.save(mem_file, image)
+    return mem_file.getvalue()
+
+
 def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     """
-    Compute the LBP image for the image. After much trial and error
-    the best parameters are:
+    Expect an input image on the range 0-1 float32. Convert to 255 scale
+    for color space conversion. Convert to uint8 for LBP computation.
+    After much trial and error the best parameters are:
         radius = 3
         n_points = 16
+        method = "uniform"
     Well operate on the Lumanance channel of the LAB color space.
     There will be 18 types returned.
     """

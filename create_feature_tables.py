@@ -1,6 +1,7 @@
 import argparse
 import sys
 from datetime import datetime
+from io import BytesIO
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -15,20 +16,20 @@ from skimage.filters import farid, gaussian
 from create_feature_tools import (
     compute_hsv_histograms,
     compute_lbp_image_and_histogram,
+    convert_numpy_to_bytesio,
     create_hog_features,
     normalize_histogram,
-    restore_image_from_list,
     parallelize_dataframe,
 )
 
 
-def compute_hsv_histograms_wapper(width: int, height: int, image: list) -> tuple:
+def compute_hsv_histograms_wapper(image: bytes) -> tuple:
     """
     Wrapper function for compute_hsv_histograms. Must return a list to avoid polars poor
     handling of numpy arrays
     """
 
-    uint8_image = restore_image_from_list(width, height, image)
+    float32_image = np.load(BytesIO(image))
     (
         hue_hist,
         hue_edges,
@@ -36,7 +37,7 @@ def compute_hsv_histograms_wapper(width: int, height: int, image: list) -> tuple
         sat_edges,
         val_hist,
         val_edges,
-    ) = compute_hsv_histograms(uint8_image)
+    ) = compute_hsv_histograms(float32_image)
     return (
         list(hue_hist),
         list(hue_edges),
@@ -47,27 +48,25 @@ def compute_hsv_histograms_wapper(width: int, height: int, image: list) -> tuple
     )
 
 
-def compute_lbp_image_and_histogram_wrapper(
-    width: int, height: int, image: list
-) -> tuple:
+def compute_lbp_image_and_histogram_wrapper(image: bytes) -> tuple:
     """
     Wrapper function for compute_lbp_image_and_histogram. Must return a list to avoid polars poor
     handling of numpy arrays
     """
-    uint8_image = restore_image_from_list(width, height, image)
-    lbp_image, lbp_hist, lbp_edges = compute_lbp_image_and_histogram(uint8_image)
-    return list(lbp_image.ravel()), list(lbp_hist), list(lbp_edges)
+    float32_image = np.load(BytesIO(image))
+    lbp_image, lbp_hist, lbp_edges = compute_lbp_image_and_histogram(float32_image)
+    return convert_numpy_to_bytesio(lbp_image), list(lbp_hist), list(lbp_edges)
 
 
-def compute_hog_features_wrapper(width: int, height: int, image: list) -> tuple:
+def compute_hog_features_wrapper(image: bytes) -> tuple:
     """
     Wrapper function for compute_hog_features. Must return a list to avoid polars poor
     handling of numpy arrays
     """
-    uint8_image = restore_image_from_list(width, height, image)
-    hog_features, hog_image = create_hog_features(uint8_image)
+    float32_image = np.load(BytesIO(image))
+    hog_features, hog_image = create_hog_features(float32_image)
 
-    return list(hog_features), list(hog_image.ravel())
+    return list(hog_features), convert_numpy_to_bytesio(hog_image)
 
 
 def hsv_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
@@ -77,7 +76,7 @@ def hsv_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     This one is for the hsv histograms
     """
     df = df.with_columns(
-        pl.struct(["Width", "Height", "Image"])
+        pl.col("Image")
         .map_elements(
             lambda x: dict(
                 zip(
@@ -89,11 +88,7 @@ def hsv_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
                         "Value_Hist",
                         "Value_Edges",
                     ),
-                    compute_hsv_histograms_wapper(
-                        x["Width"],
-                        x["Height"],
-                        x["Image"],
-                    ),
+                    compute_hsv_histograms_wapper(x),
                 )
             )
         )
@@ -110,16 +105,12 @@ def lbp_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     This one is for the lbp image and histogram
     """
     df = df.with_columns(
-        pl.struct(["Width", "Height", "Image"])
+        pl.col("Image")
         .map_elements(
             lambda x: dict(
                 zip(
                     ("LBP_Image", "LBP_Hist", "LBP_Edges"),
-                    compute_lbp_image_and_histogram_wrapper(
-                        x["Width"],
-                        x["Height"],
-                        x["Image"],
-                    ),
+                    compute_lbp_image_and_histogram_wrapper(x),
                 )
             )
         )
@@ -136,16 +127,12 @@ def hog_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     This one is for the hog features
     """
     df = df.with_columns(
-        pl.struct(["Width", "Height", "Image"])
+        pl.col("Image")
         .map_elements(
             lambda x: dict(
                 zip(
                     ("HOG_Features", "HOG_Image"),
-                    compute_hog_features_wrapper(
-                        x["Width"],
-                        x["Height"],
-                        x["Image"],
-                    ),
+                    compute_hog_features_wrapper(x),
                 )
             )
         )

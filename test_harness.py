@@ -52,7 +52,7 @@ def convert_to_bytes(df: pl.DataFrame) -> pl.DataFrame:
 
 def main():
     num_cpus = 8
-    test_parquet = Path("data/test.parquet")
+    test_parquet = Path("data/test.parquet.lists")
     test_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
     print(test_df.head())
     print(test_df.columns)
@@ -64,6 +64,7 @@ def main():
     print(type(test_df["BytesIo"][0]))
     bytes = BytesIO(test_df["BytesIo"][0])
     image = np.load(bytes)
+    # sample = np.load(BytesIO(image))
 
 
 if __name__ == "__main__":

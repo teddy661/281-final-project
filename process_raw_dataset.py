@@ -12,7 +12,7 @@ import psutil
 from PIL import Image
 from skimage.transform import rescale, rotate
 
-from create_feature_tools import parallelize_dataframe, restore_image_from_list
+from create_feature_tools import convert_numpy_to_bytesio, parallelize_dataframe
 
 
 def prelim_validate_dataset_dir(root_dir: Path) -> bool:
@@ -40,20 +40,24 @@ def update_path(path: Path, root_dir: Path) -> Path:
 
 
 def crop_to_roi(
-    width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: list
+    width: int, height: int, y1: int, y2: int, x1: int, x2: int, image: bytes
 ) -> tuple:
     """
     Crops the image to the Roi values provided in the dataset.
     Does not alter the image dtype
     """
-    image = restore_image_from_list(width, height, image)
+    image = np.load(BytesIO(image))
     cropped_image = image[y1 : y2 + 1, x1 : x2 + 1, :]
     cropped_image_height = cropped_image.shape[0]
     cropped_image_width = cropped_image.shape[1]
-    return cropped_image_width, cropped_image_height, list(cropped_image.ravel())
+    return (
+        cropped_image_width,
+        cropped_image_height,
+        convert_numpy_to_bytesio(cropped_image),
+    )
 
 
-def rescale_image(width: int, height: int, image: list, standard: int=64) -> tuple:
+def rescale_image(image: bytes, standard: int = 64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
     Use order = 5 for (Bi-quintic) #Very slow Super high quality result.
@@ -63,7 +67,7 @@ def rescale_image(width: int, height: int, image: list, standard: int=64) -> tup
     and always return an image of dtype float64 which we truncate back to float32
     which is our standard image format due to cvtColor limitations
     """
-    image = restore_image_from_list(width, height, image)
+    image = np.load(BytesIO(image))
     scale = standard / min(image.shape[:2])
     image = rescale(image, scale, order=5, anti_aliasing=True, channel_axis=2)
     image = image[
@@ -76,11 +80,11 @@ def rescale_image(width: int, height: int, image: list, standard: int=64) -> tup
     return (
         scaled_image_width,
         scaled_image_height,
-        list(image.astype(np.float32).ravel()),
+        convert_numpy_to_bytesio(image),
     )
 
 
-def stretch_histogram(width: int, height: int, image: np.array) -> list:
+def stretch_histogram(image: bytes) -> list:
     """
     Input a float32 image
     Stretch the histogram of the image to the full range of 0-100
@@ -89,7 +93,7 @@ def stretch_histogram(width: int, height: int, image: np.array) -> list:
     preserve the possible the color information in the image. The highest precision
     supported by cvtColor. Abandon this in favor of HSV
     """
-    restored_image = restore_image_from_list(width, height, image)
+    restored_image = np.load(BytesIO(image))
     restored_uint8 = (restored_image * 255.0).astype(np.uint8)
     lab_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2LAB)
     l_channel = lab_image[:, :, 0]
@@ -111,7 +115,7 @@ def stretch_histogram(width: int, height: int, image: np.array) -> list:
     return list((rgb_image.astype(np.float32) / 255.0).ravel())
 
 
-def stretch_histogram_hsv(width: int, height: int, image: np.array) -> list:
+def stretch_histogram_hsv(image: bytes) -> list:
     """
     Input a float32 image
     Stretch the histogram of the image to the full range of 0-1
@@ -121,7 +125,7 @@ def stretch_histogram_hsv(width: int, height: int, image: np.array) -> list:
     supported by cvtColor. Prefer this over LAB stretching for the image data
     we have
     """
-    restored_image = restore_image_from_list(width, height, image)
+    restored_image = np.load(BytesIO(image))
     restored_uint8 = (restored_image * 255.0).astype(np.uint8)
     hsv_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2HSV)
     brightness = hsv_image[:, :, 2]
@@ -139,14 +143,14 @@ def stretch_histogram_hsv(width: int, height: int, image: np.array) -> list:
     return list((new_rgb_image.astype(np.float32) / 255.0).ravel())
 
 
-def apply_clahe(width: int, height: int, image: np.array) -> list:
+def apply_clahe(image: bytes) -> list:
     """
     Input a float32 image
     see if better results with CLAHE
     CLAHE introduces a lot of noise in the image even though
     the contrast is better. Not using it for now
     """
-    restored_image = restore_image_from_list(width, height, image)
+    restored_image = sample = np.load(BytesIO(image))
     restored_uint8 = (restored_image * 255.0).astype(np.uint8)
     hsv_image = cv2.cvtColor(restored_uint8, cv2.COLOR_RGB2HSV)
     brightness = hsv_image[:, :, 2]
@@ -182,10 +186,13 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     We convert the image to float32 and normalize it to the range of 0-1. cvtColor is which
     we use extensively expects thing in uint8 format. We'll convert back to float32
     """
+    mem_file = BytesIO()
     df = df.with_columns(
         pl.col("Path")
         .map_elements(
-            lambda x: list(np.array(Image.open(x), dtype=np.float32).ravel() / 255.0)
+            lambda x: convert_numpy_to_bytesio(
+                np.array(Image.open(x), dtype=np.float32) / 255.0
+            )
         )
         .alias("Image")
     )
@@ -231,16 +238,12 @@ def rescale_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     This one rescales the image to our standard size which is 64x64
     """
     df = df.with_columns(
-        pl.struct(["Cropped_Width", "Cropped_Height", "Cropped_Image"])
+        pl.col("Cropped_Image")
         .map_elements(
             lambda x: dict(
                 zip(
                     ("Scaled_Width", "Scaled_Height", "Scaled_Image"),
-                    rescale_image(
-                        x["Cropped_Width"],
-                        x["Cropped_Height"],
-                        x["Cropped_Image"],
-                    ),
+                    rescale_image(x),
                 )
             )
         )
