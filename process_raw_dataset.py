@@ -1,6 +1,7 @@
 import argparse
 import sys
 from datetime import datetime
+from io import BytesIO
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -10,29 +11,8 @@ import polars as pl
 import psutil
 from PIL import Image
 from skimage.transform import rescale, rotate
-from create_feature_tools import restore_image_from_list
 
-
-def parallelize_dataframe(df, func, n_cores=4):
-    """
-    Enable parallel processing of a dataframe by splitting it by the number of cores
-    and then recombining the results.
-    """
-    rows_per_dataframe = df.height // n_cores
-    remainder = df.height % n_cores
-    num_rows = [rows_per_dataframe] * (n_cores - 1)
-    num_rows.append(rows_per_dataframe + remainder)
-    start_pos = [0]
-    for n in num_rows:
-        start_pos.append(start_pos[-1] + n)
-    df_split = []
-    for start, rows in zip(start_pos, num_rows):
-        df_split.append(df.slice(start, rows))
-    pool = Pool(n_cores)
-    new_df = pl.concat(pool.map(func, df_split))
-    pool.close()
-    pool.join()
-    return new_df
+from create_feature_tools import parallelize_dataframe, restore_image_from_list
 
 
 def prelim_validate_dataset_dir(root_dir: Path) -> bool:
@@ -73,7 +53,7 @@ def crop_to_roi(
     return cropped_image_width, cropped_image_height, list(cropped_image.ravel())
 
 
-def rescale_image(width: int, height: int, image: list, standard=64) -> tuple:
+def rescale_image(width: int, height: int, image: list, standard: int=64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
     Use order = 5 for (Bi-quintic) #Very slow Super high quality result.
@@ -200,7 +180,7 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     to be wrapped in a function that takes a dataframe and returns a dataframe.
     This one reads an image from disk and stores it as a flattened list in a column.
     We convert the image to float32 and normalize it to the range of 0-1. cvtColor is which
-    we use extensively only supports max precision of float32.
+    we use extensively expects thing in uint8 format. We'll convert back to float32
     """
     df = df.with_columns(
         pl.col("Path")
@@ -350,6 +330,9 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     end_time = datetime.now()
     print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
 
+    ##
+    # Turns out histogram stretching and re-assembly is bad according to Rachel. Do not use
+    #
     # Stretch the histogram of the image to the full range of 0-100 in L Channel
     # This was abandoned in favor of stretching the V channel in HSV
     # print(f"\tBegin Histogram Stretching", file=sys.stderr)

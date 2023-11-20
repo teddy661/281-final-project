@@ -18,29 +18,8 @@ from create_feature_tools import (
     create_hog_features,
     normalize_histogram,
     restore_image_from_list,
+    parallelize_dataframe,
 )
-
-
-def parallelize_dataframe(df, func, n_cores=4):
-    """
-    Enable parallel processing of a dataframe by splitting it by the number of cores
-    and then recombining the results.
-    """
-    rows_per_dataframe = df.height // n_cores
-    remainder = df.height % n_cores
-    num_rows = [rows_per_dataframe] * (n_cores - 1)
-    num_rows.append(rows_per_dataframe + remainder)
-    start_pos = [0]
-    for n in num_rows:
-        start_pos.append(start_pos[-1] + n)
-    df_split = []
-    for start, rows in zip(start_pos, num_rows):
-        df_split.append(df.slice(start, rows))
-    pool = Pool(n_cores)
-    new_df = pl.concat(pool.map(func, df_split))
-    pool.close()
-    pool.join()
-    return new_df
 
 
 def compute_hsv_histograms_wapper(width: int, height: int, image: list) -> tuple:
