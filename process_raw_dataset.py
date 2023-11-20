@@ -359,11 +359,12 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     # print(f"\tEnd Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
 
     # Stretch the histogram of the image to the full range of 0-255 in V Channel
-    print(f"\tBegin HSV Histogram Stretching", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, stretch_histogram_hsv_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(f"\tEnd HSV Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
+    # print(f"\tBegin HSV Histogram Stretching", file=sys.stderr)
+    # start_time = datetime.now()
+    # df = parallelize_dataframe(df, stretch_histogram_hsv_wrapper, num_cpus)
+    # end_time = datetime.now()
+    # print(f"\tEnd HSV Histogram Stretching:\t{end_time - start_time}", file=sys.stderr)
+
     return df
 
 

@@ -198,31 +198,6 @@ def adjust_columns(
             "Cropped_Height",
             "Cropped_Image",
             "Cropped_Resolution",
-            "Scaled_Image",
-        ]
-        rename_columns = {
-            "Stretched_Histogram_Image": "Image",
-            "Scaled_Resolution": "Resolution",
-            "Scaled_Width": "Width",
-            "Scaled_Height": "Height",
-            "Scaled_Resolution": "Resolution",
-        }
-    elif target_image == source_image_columns[1]:
-        drop_columns = [
-            "Width",
-            "Height",
-            "Roi.X1",
-            "Roi.Y1",
-            "Roi.X2",
-            "Roi.Y2",
-            "Path",
-            "Resolution",
-            "Image",
-            "Cropped_Width",
-            "Cropped_Height",
-            "Cropped_Image",
-            "Cropped_Resolution",
-            "Stretched_Histogram_Image",
         ]
         rename_columns = {
             "Scaled_Image": "Image",
@@ -356,7 +331,7 @@ def main():
     ## the default. If you want to use "Scaled_Image" then change the line below
     ## to:
     ## target_image = source_image_columns[1]
-    source_image_columns = ["Stretched_Histogram_Image", "Scaled_image"]
+    source_image_columns = ["Scaled_image"]
     target_image = source_image_columns[0]  # 0 should be the default
     print(
         f"Using {target_image} as source image for feature generation", file=sys.stderr
