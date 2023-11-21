@@ -151,8 +151,9 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     image = (image * 255.0).astype(np.uint8)
     l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
     lbp_image = local_binary_pattern(l_channel, n_points, radius, method="uniform")
+    n_bins = int(lbp_image.max() + 1)
     lbp_hist, lbp_edges = np.histogram(
-        lbp_image.ravel().astype(np.uint8), bins=18, range=(0, 18)
+        lbp_image.ravel().astype(np.uint8), bins=n_bins, range=(0, n_bins)
     )
     # We can cast this to  unit8 because we know the range is 0-17
     return lbp_image.astype(np.uint8), lbp_hist, lbp_edges
