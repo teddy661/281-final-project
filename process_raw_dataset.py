@@ -12,7 +12,7 @@ import psutil
 from PIL import Image
 from skimage.transform import rescale, rotate
 
-from create_feature_tools import convert_numpy_to_bytesio, parallelize_dataframe
+from feature_utils import convert_numpy_to_bytesio, parallelize_dataframe
 
 
 def prelim_validate_dataset_dir(root_dir: Path) -> bool:

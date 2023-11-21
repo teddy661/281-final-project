@@ -13,7 +13,7 @@ import psutil
 from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import farid, gaussian
 
-from create_feature_tools import (
+from feature_utils import (
     compute_hsv_histograms,
     compute_lbp_image_and_histogram,
     convert_numpy_to_bytesio,
