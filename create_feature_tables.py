@@ -20,6 +20,7 @@ from create_feature_tools import (
     create_hog_features,
     normalize_histogram,
     parallelize_dataframe,
+    compute_sift,
 )
 
 
@@ -56,6 +57,16 @@ def compute_lbp_image_and_histogram_wrapper(image: bytes) -> tuple:
     float32_image = np.load(BytesIO(image))
     lbp_image, lbp_hist, lbp_edges = compute_lbp_image_and_histogram(float32_image)
     return convert_numpy_to_bytesio(lbp_image), list(lbp_hist), list(lbp_edges)
+
+
+def compute_sift_features_wrapper(image: bytes) -> tuple:
+    """
+    Wrapper function for compute_sift_features. Must return a list to avoid polars poor
+    handling of numpy arrays
+    """
+    float32_image = np.load(BytesIO(image))
+    sift_features = compute_sift(float32_image)
+    return convert_numpy_to_bytesio(sift_features)
 
 
 def compute_hog_features_wrapper(image: bytes) -> tuple:
@@ -117,6 +128,22 @@ def lbp_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
         .alias("New_Cols")
     ).unnest("New_Cols")
     df = df.drop("LBP_Edges")
+    return df
+
+
+def sift_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one is for the sift features
+    """
+    df = df.with_columns(
+        pl.col("Image")
+        .map_elements(
+            lambda x: compute_sift_features_wrapper(x),
+        )
+        .alias("SIFT_Features")
+    )
     return df
 
 
@@ -211,6 +238,15 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     end_time = datetime.now()
     print(
         f"\tEnd Calculating HOG Features:\t\t{end_time - start_time}", file=sys.stderr
+    )
+
+    # SIFT Features
+    print(f"\tBegin Calculating SIFT Features", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(
+        f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}", file=sys.stderr
     )
     return df
 

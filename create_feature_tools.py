@@ -93,15 +93,17 @@ def create_hog_features(image: np.array) -> np.array:
     return features_rgb, hog_image_rgb
 
 
-def perform_sift(image: np.array) -> tuple:
+def compute_sift(image: np.array) -> np.array:
     """
-    Perform the SIFT algorithm on the image. We will use the L channel of the LAB color space
-    We discarded this feature after exploration.
+    Imput 3 channel rgb image on the range 0-1 float32
+    Convert to grayscale
+    Perform the SIFT algorithm on the image.
     """
-    l_channel, a_channel, b_channel = cv2.split(convert_to_lab(image))
+    uint8_image = (image * 255.0).astype(np.uint8)
+    gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     sift = cv2.SIFT_create()
-    kp, des = sift.detectAndCompute(l_channel, None)
-    return kp, des
+    _, des = sift.detectAndCompute(gray_image, None)
+    return des
 
 
 def compute_hsv_histograms(image: np.array) -> np.array:
