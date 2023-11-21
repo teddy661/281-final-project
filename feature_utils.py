@@ -93,6 +93,22 @@ def create_hog_features(image: np.array) -> np.array:
     return features_rgb, hog_image_rgb
 
 
+def stretch_gray_histogram(image: np.array) -> np.array:
+    """
+    Input a single channel uint8 image 0-255
+    Stretch the histogram of the image to the full range of 0-255
+    """
+
+    min_val = np.min(image)
+    max_val = np.max(image)
+    new_min = 0
+    new_max = 255
+    stretched_image = np.interp(image, (min_val, max_val), (new_min, new_max)).astype(
+        image.dtype
+    )
+    return stretched_image
+
+
 def compute_sift(image: np.array) -> np.array:
     """
     Imput 3 channel rgb image on the range 0-1 float32
@@ -101,8 +117,9 @@ def compute_sift(image: np.array) -> np.array:
     """
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
+    stretched_image = stretch_gray_histogram(gray_image)
     sift = cv2.SIFT_create()
-    _, des = sift.detectAndCompute(gray_image, None)
+    _, des = sift.detectAndCompute(stretched_image, None)
     return des
 
 

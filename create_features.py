@@ -66,6 +66,9 @@ def compute_sift_features_wrapper(image: bytes) -> tuple:
     """
     float32_image = np.load(BytesIO(image))
     sift_features = compute_sift(float32_image)
+    if sift_features is None:
+        # There are images where sift doesn't work. Return an empty feature vector
+        sift_features = np.zeros((1, 128), dtype=np.float32)  # Empty feature vector
     return convert_numpy_to_bytesio(sift_features)
 
 
