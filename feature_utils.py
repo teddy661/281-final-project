@@ -162,14 +162,17 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
         radius = 3
         n_points = 16
         method = "uniform"
-    Well operate on the Lumanance channel of the LAB color space.
+    Convert Image to grayscale and then stretch the histogram to the full range
     There will be 18 types returned.
     """
     radius = 3
     n_points = 16
-    image = (image * 255.0).astype(np.uint8)
-    l_channel, a_channel, b_channel = cv2.split(cv2.cvtColor(image, cv2.COLOR_RGB2LAB))
-    lbp_image = local_binary_pattern(l_channel, n_points, radius, method="uniform")
+    uint8_image = (image * 255.0).astype(np.uint8)
+    gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
+    stretched_image = stretch_gray_histogram(gray_image)
+    lbp_image = local_binary_pattern(
+        stretched_image, n_points, radius, method="uniform"
+    )
     n_bins = int(lbp_image.max() + 1)
     lbp_hist, lbp_edges = np.histogram(
         lbp_image.ravel().astype(np.uint8), bins=n_bins, range=(0, n_bins)
