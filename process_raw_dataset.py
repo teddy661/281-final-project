@@ -291,10 +291,31 @@ def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
+def process_meta_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
+    """
+    Read the csv file into a polars dataframe.
+    Read the image into a numpy array and store it in BytesIO object in numpy format
+    This dataframe can be joined with the train and test dataframes
+    """
+    df = pl.read_csv(csv_file)
+    # Update the path to be absolute so we're not passing around relative paths
+    # this makes the parquet file machine dependent
+    df = df.with_columns(
+        pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
+    )
+    print(f"\tBegin Reading Images", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(f"\tEnd Reading Images:\t\t{end_time - start_time}", file=sys.stderr)
+    df = df.rename({"Image": "Meta_Image"})
+    return df
+
+
 def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     """
     Read the csv file into a polars dataframe.
-    Read the image into a numpy array and store it as a flattened list
+    Read the image into a numpy array and store it in BytesIO object in numpy format
     This allows pyarrow to store it correctly in the parquet file
     Our images are in scale of 0 to 255, so we'll divide by 255 to normalize
     Crop the image to the Roi values provided in the dataset
@@ -308,7 +329,7 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
         pl.col("Path").map_elements(lambda x: update_path(x, root_dir))
     )
 
-    # Read the image into a numpy array and store it as a flattened list
+    # Read the image into a numpy array and store it in BytesIO object in numpy format
     # This allows pyarrow to store it correctly in the parquet file.
     # Change the Entire pipline back to storing the image as a list of float64
     # Deal with conversion whenever we deal with cvtColor
@@ -369,6 +390,7 @@ def main():
 
     train_parquet = script_dir.joinpath("data/train.parquet")
     test_parquet = script_dir.joinpath("data/test.parquet")
+    meta_parquet = script_dir.joinpath("data/meta_full.parquet")
 
     parser = argparse.ArgumentParser(description="Parse GTSRB dataset")
     parser.add_argument(
@@ -401,7 +423,9 @@ def main():
     else:
         print(f"Preliminary Dataset Check Succeeded", file=sys.stderr)
 
-    if train_parquet.exists() and test_parquet.exists() and not args.force:
+    if (
+        train_parquet.exists() or test_parquet.exists() or meta_parquet.exists()
+    ) and not args.force:
         print(
             f"FATAL: Parquet files already exist. Use -f to force overwrite.",
             file=sys.stderr,
@@ -412,6 +436,7 @@ def main():
         print(f"Force removing existing files.", file=sys.stderr)
         train_parquet.unlink(missing_ok=True)
         test_parquet.unlink(missing_ok=True)
+        meta_parquet.unlink(missing_ok=True)
 
     if args.num_cpus is not None:
         num_cpus = args.num_cpus
@@ -425,6 +450,31 @@ def main():
         num_cpus = 12
 
     print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
+    print(f"Begin Processing Meta data.", file=sys.stderr)
+    meta_start_time = datetime.now()
+    meta_csv = root_dir.joinpath("Meta_full.csv")
+    meta_df = process_meta_csv(meta_csv, root_dir, num_cpus)
+    print(f"\tBegin Writing meta data", file=sys.stderr)
+    start_time = datetime.now()
+    meta_df.write_parquet(
+        meta_parquet,
+        compression="zstd",
+        compression_level=5,
+        use_pyarrow=True,
+    )
+    end_time = datetime.now()
+    print(
+        f"\tEnd Writing meta data:\t\t{end_time - start_time}",
+        file=sys.stderr,
+    )
+    meta_end_time = datetime.now()
+    print(
+        f"End Processing meta data:\t\t{meta_end_time - meta_start_time}",
+        file=sys.stderr,
+    )
+    print(meta_df.head())
+    del meta_df  # free up some memory
+
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")
