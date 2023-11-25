@@ -184,14 +184,16 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     to be wrapped in a function that takes a dataframe and returns a dataframe.
     This one reads an image from disk and stores it as a flattened list in a column.
     We convert the image to float32 and normalize it to the range of 0-1. cvtColor is which
-    we use extensively expects thing in uint8 format. We'll convert back to float32
+    we use extensively expects thing in uint8 format. We'll convert back to float32.
+    The meta images are png with 4 channels add .convert('RGB') to convert to 3 channels
+    doesn't affect the existing jpg
     """
     mem_file = BytesIO()
     df = df.with_columns(
         pl.col("Path")
         .map_elements(
             lambda x: convert_numpy_to_bytesio(
-                np.array(Image.open(x), dtype=np.float32) / 255.0
+                np.array(Image.open(x).convert("RGB"), dtype=np.float32) / 255.0
             )
         )
         .alias("Image")
@@ -291,6 +293,53 @@ def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
+def calculate_meta_image_stats(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one calculates the mean and standard deviation of the image
+    """
+    df = df.with_columns(
+        pl.col("Meta_Image")
+        .map_elements(
+            lambda x: dict(
+                zip(("Meta_Width", "Meta_Height"), np.load(BytesIO(x)).shape)
+            )
+        )
+        .alias("New_Cols")
+    ).unnest("New_Cols")
+    df = df.with_columns(
+        (pl.col("Meta_Width") * pl.col("Meta_Height")).alias("Meta_Resolution")
+    )
+    return df
+
+
+def rescale_meta_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one rescales the image to our standard size which is 64x64
+    """
+    df = df.with_columns(
+        pl.col("Meta_Image")
+        .map_elements(
+            lambda x: dict(
+                zip(
+                    ("Scaled_Meta_Width", "Scaled_Meta_Height", "Scaled_Meta_Image"),
+                    rescale_image(x),
+                )
+            )
+        )
+        .alias("New_Cols")
+    ).unnest("New_Cols")
+    df = df.with_columns(
+        (pl.col("Scaled_Meta_Width") * pl.col("Scaled_Meta_Height")).alias(
+            "Scaled_Meta_Resolution"
+        )
+    )
+    return df
+
+
 def process_meta_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     """
     Read the csv file into a polars dataframe.
@@ -306,9 +355,11 @@ def process_meta_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFr
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
+    df = df.rename({"Image": "Meta_Image"})
+    df = parallelize_dataframe(df, calculate_meta_image_stats, num_cpus)
+    df = parallelize_dataframe(df, rescale_meta_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Reading Images:\t\t{end_time - start_time}", file=sys.stderr)
-    df = df.rename({"Image": "Meta_Image"})
     return df
 
 
