@@ -4,17 +4,19 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
+import cv2
 import numpy as np
 import polars as pl
 import psutil
 
 from feature_utils import (
+    TemplateMatching,
     compute_hsv_histograms,
     compute_lbp_image_and_histogram,
+    compute_sift,
     convert_numpy_to_bytesio,
     create_hog_features,
     parallelize_dataframe,
-    compute_sift,
 )
 
 
@@ -205,6 +207,38 @@ def adjust_columns(
     return df
 
 
+def compute_template_wrapper(image_bytes: bytes, template_bytes: bytes) -> np.array:
+    """
+    Wrapper function for compute_template. Must return a list to avoid polars poor
+    handling of numpy arrays
+    """
+    tm = TemplateMatching()
+    uint8_image = (np.load(BytesIO(image_bytes)) * 255.0).astype(np.uint8)
+    gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
+
+    uint8_template = (np.load(BytesIO(template_bytes)) * 255.0).astype(np.uint8)
+    gray_template = cv2.cvtColor(uint8_template, cv2.COLOR_RGB2GRAY)
+
+    template_match = tm.match_template(img=gray_image, template=gray_template)
+    return convert_numpy_to_bytesio(template_match)
+
+
+def template_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one is for the template
+    """
+    df = df.with_columns(
+        pl.struct(["Image", "Meta_Image"])
+        .map_elements(
+            lambda x: compute_template_wrapper(x["Image"], x["Meta_Image"]),
+        )
+        .alias("Template_Pattern")
+    )
+    return df
+
+
 def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     """
     Need to wrap everything so we can process multiple files
@@ -243,6 +277,16 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     end_time = datetime.now()
     print(
         f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}", file=sys.stderr
+    )
+
+    # Template Feature
+    print("\tBegin Calculating Template Features", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, template_parallel_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(
+        f"\tEnd Calculating Template Features:\t\t{end_time - start_time}",
+        file=sys.stderr,
     )
     return df
 
@@ -297,12 +341,18 @@ def main():
     test_parquet = script_dir.joinpath("data/test.parquet")
     test_features_parquet = script_dir.joinpath("data/test_features.parquet")
 
+    meta_parquet = script_dir.joinpath("data/meta_full.parquet")
+
     if not train_parquet.exists():
         print(f"FATAL: Training file is missing: {train_parquet}", file=sys.stderr)
         exit(1)
 
     if not test_parquet.exists():
         print(f"FATAL: Training file is missing: {test_parquet}", file=sys.stderr)
+        exit(1)
+
+    if not meta_parquet.exists():
+        print(f"FATAL: Meta file is missing: {meta_parquet}", file=sys.stderr)
         exit(1)
 
     if (
@@ -335,6 +385,10 @@ def main():
         f"Using {target_image} as source image for feature generation", file=sys.stderr
     )
 
+    meta_df = pl.read_parquet(meta_parquet, use_pyarrow=True, memory_map=True)
+    meta_image_df = meta_df.select(["ClassId", "Meta_Image"])
+    del meta_df
+
     print("Begin Reading Test Parquet", file=sys.stderr)
     start_time = datetime.now()
     test_feature_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
@@ -343,7 +397,9 @@ def main():
     test_feature_df = adjust_columns(
         test_feature_df, target_image, source_image_columns
     )
+    test_feature_df = test_feature_df.join(meta_image_df, on="ClassId")
     test_feature_df = process_features(test_feature_df, num_cpus)
+    test_feature_df.drop("Meta_Image")
 
     # Write the Test parquet file
     print("\tBegin Writing Test feature data", file=sys.stderr)
@@ -369,7 +425,9 @@ def main():
     train_feature_df = adjust_columns(
         train_feature_df, target_image, source_image_columns
     )
+    train_feature_df = train_feature_df.join(meta_image_df, on="ClassId")
     train_feature_df = process_features(train_feature_df, num_cpus)
+    train_feature_df.drop("Meta_Image")
 
     # Write the Training parquet file
     print("\tBegin Writing Training feature data", file=sys.stderr)
