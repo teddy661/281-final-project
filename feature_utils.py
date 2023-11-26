@@ -1,12 +1,179 @@
+import itertools
+import os
 from io import BytesIO
 from multiprocessing import Pool
 from typing import Callable
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+import tensorflow as tf
+from matplotlib import ticker
+from PIL import Image
 from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import gaussian
+
+
+# Class to match templates (Advanced Feature Extraction)
+class TemplateMatching:
+    """
+    TQDM and display are no no in batch processing. remove them
+    """
+
+    def __init__(self, img=None, template=None, thresholdVal=-1):
+        """
+        Class instanciation
+        Input parameter: img - Original Image
+                         template - Image template
+                         thresholdVal - Pixels in the template with value greater that threshold are used
+                                        -1 (default) to use all pixels or 0  to use edges with value > 0
+        """
+        self.image = img
+        self.template = template
+        self.thresholdVal = thresholdVal
+        self.maxima = 0
+        self.minima = 0
+        return
+
+    def get_imageMaxMin(self, img=None):
+        img = self.image if img is None else img
+        return np.amax(img), np.amin(img)
+
+    def shrink_image(self, img=None, factor=30):
+        img = self.image if img is None else img
+
+        width, height = img.shape[1], img.shape[0]
+        width = (width * factor) // 100
+        height = (height * factor) // 100
+
+        lchannel = False
+        if len(img.shape) <= 2:
+            img = tf.expand_dims(img, -1)
+            lchannel = True
+
+        img = tf.image.resize(img, size=(width, height), preserve_aspect_ratio=True)
+        if lchannel is True:
+            img = img[:, :, 0]
+
+        return img
+
+    def plot3DHistograma(self, img, zRange=[0, 0], axesView=[0, 0], zTicks=True):
+        def _major_formatter(x, pos):
+            return "{:.1f}".format(x + zRange[0])
+
+        img = self.image if img is None else img
+
+        width = img.shape[1]
+        height = img.shape[0]
+
+        # Z clipping fails to clip bar charts
+        if zRange[0] != 0:
+            for x in range(0, width):
+                for y in range(0, height):
+                    img[y, x] -= zRange[0]
+                    if img[y, x] < 0:
+                        img[y, x] = 0
+
+        # Convert data to array
+        zData = np.array(img)
+
+        # Create an X-Y mesh of the same dimension as the 2D data
+        xData, yData = np.meshgrid(np.arange(width), np.arange(height))
+
+        # Flatten the arrays so that they may be passed to "axes.bar3d".
+        xData = xData.flatten()
+        yData = yData.flatten()
+        zData = zData.flatten()
+
+        # Create figure
+        fig = plt.figure()
+        axes = fig.add_subplot(projection="3d")
+        axes.bar3d(
+            xData,
+            yData,
+            np.zeros(len(zData)),
+            0.98,
+            0.98,
+            zData,
+            alpha=1.0,
+            zsort="min",
+        )
+
+        # Axes
+        axes.set_xlim3d(0, width)
+        axes.set_ylim3d(0, height)
+
+        # View
+        if axesView[0] != 0 or axesView[1] != 0:
+            axes.view_init(axesView[0], axesView[1])
+
+        # Shift the tick labels up by minimum, set_zlim3d does not work
+        if zRange[0] != 0 or zRange[1] != 0:
+            if zTicks:
+                axes.zaxis.set_major_formatter(ticker.FuncFormatter(_major_formatter))
+            else:
+                axes.zaxis.set_major_formatter(ticker.NullFormatter())
+
+        # Set the shifted range
+        if zRange[0] != 0 or zRange[1] != 0:
+            axes.set_zlim3d([0, zRange[1] - zRange[0]])
+
+        plt.title("Histogram of Pattern Matching", fontsize=10)
+        plt.show()
+        return
+
+    def match_template(self, img=None, template=None, thresholdVal=-1):
+        img = self.image if img is None else img
+        template = self.template if template is None else template
+
+        # Reshape images (eliminate channel dimension if at all)
+        if len(img.shape) > 2:
+            img = img[:, :, 0]
+        if len(template.shape) > 2:
+            template = template[:, :, 0]
+
+        # Get sizes
+        width, height = img.shape[1], img.shape[0]
+        widthTemplate, heightTemplate = template.shape[1], template.shape[0]
+
+        # Create a collector
+        collector = np.zeros((height, width), dtype="float")
+
+        # Template matching
+        tCenterX = (widthTemplate - 1) // 2
+        tCenterY = (heightTemplate - 1) // 2
+
+        for x in range(0, width):
+            for y in range(0, height):
+                for wx, wy in itertools.product(
+                    range(0, widthTemplate), range(0, heightTemplate)
+                ):
+                    posY = y + wy - tCenterY
+                    posX = x + wx - tCenterX
+
+                    # The threshold is used to accumulate only the edge pixels in an edge template
+                    # The difference of pixel values is inverted to show the best match as a peak
+                    if (
+                        posY > -1
+                        and posY < height
+                        and posX > -1
+                        and posX < width
+                        and template[wy, wx] > thresholdVal
+                    ):
+                        diff = (
+                            1.0
+                            - abs(float(img[posY, posX]) - float(template[wy, wx]))
+                            / 255.0
+                        )
+                        collector[y, x] += diff * diff
+
+        # Get collector (accumulator) within a maxima and mininma region
+        self.maxima, self.minima = self.get_imageMaxMin(collector)
+
+        return collector
 
 
 def parallelize_dataframe(
