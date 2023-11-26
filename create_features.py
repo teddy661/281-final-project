@@ -2,23 +2,17 @@ import argparse
 import sys
 from datetime import datetime
 from io import BytesIO
-from multiprocessing import Pool
 from pathlib import Path
 
-import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import psutil
-from skimage.feature import canny, hog, local_binary_pattern
-from skimage.filters import farid, gaussian
 
 from feature_utils import (
     compute_hsv_histograms,
     compute_lbp_image_and_histogram,
     convert_numpy_to_bytesio,
     create_hog_features,
-    normalize_histogram,
     parallelize_dataframe,
     compute_sift,
 )
@@ -217,7 +211,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     Need to wrap everything so we can process multiple files
     """
     # HSV Histograms
-    print(f"\tBegin Calculating HSV Histograms", file=sys.stderr)
+    print("\tBegin Calculating HSV Histograms", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
     end_time = datetime.now()
@@ -226,7 +220,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     )
 
     # LBP Image and Histogram
-    print(f"\tBegin Calculating LBP Histograms", file=sys.stderr)
+    print("\tBegin Calculating LBP Histograms", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
     end_time = datetime.now()
@@ -235,7 +229,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     )
 
     # HOG Features
-    print(f"\tBegin Calculating HOG Features", file=sys.stderr)
+    print("\tBegin Calculating HOG Features", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
     end_time = datetime.now()
@@ -244,7 +238,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     )
 
     # SIFT Features
-    print(f"\tBegin Calculating SIFT Features", file=sys.stderr)
+    print("\tBegin Calculating SIFT Features", file=sys.stderr)
     start_time = datetime.now()
     df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
     end_time = datetime.now()
@@ -292,9 +286,9 @@ def main():
 
     if num_cpus > 12 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
-        print(f"Forcing to 12 cpus", file=sys.stderr)
+        print("Forcing to 12 cpus", file=sys.stderr)
         print(
-            f"Re-Run and set number of cpus with -n option to override", file=sys.stderr
+            "Re-Run and set number of cpus with -n option to override", file=sys.stderr
         )
         num_cpus = 12
 
@@ -316,13 +310,13 @@ def main():
         train_features_parquet.exists() or test_features_parquet.exists()
     ) and not args.force:
         print(
-            f"FATAL: Features parquet files already exist. Use -f to force overwrite.",
+            "FATAL: Features parquet files already exist. Use -f to force overwrite.",
             file=sys.stderr,
         )
         exit(1)
 
     if args.force:
-        print(f"Force removing existing files.", file=sys.stderr)
+        print("Force removing existing files.", file=sys.stderr)
         train_features_parquet.unlink(missing_ok=True)
         test_features_parquet.unlink(missing_ok=True)
 
@@ -342,7 +336,7 @@ def main():
         f"Using {target_image} as source image for feature generation", file=sys.stderr
     )
 
-    print(f"Begin Reading Test Parquet", file=sys.stderr)
+    print("Begin Reading Test Parquet", file=sys.stderr)
     start_time = datetime.now()
     test_feature_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
     end_time = datetime.now()
@@ -353,7 +347,7 @@ def main():
     test_feature_df = process_features(test_feature_df, num_cpus)
 
     # Write the Test parquet file
-    print(f"\tBegin Writing Test feature data", file=sys.stderr)
+    print("\tBegin Writing Test feature data", file=sys.stderr)
     start_time = datetime.now()
     test_feature_df.write_parquet(
         test_features_parquet,
@@ -368,7 +362,7 @@ def main():
 
     del test_feature_df  # Free up memory
 
-    print(f"Begin Reading Training Parquet", file=sys.stderr)
+    print("Begin Reading Training Parquet", file=sys.stderr)
     start_time = datetime.now()
     train_feature_df = pl.read_parquet(train_parquet, use_pyarrow=True, memory_map=True)
     end_time = datetime.now()
@@ -379,7 +373,7 @@ def main():
     train_feature_df = process_features(train_feature_df, num_cpus)
 
     # Write the Training parquet file
-    print(f"\tBegin Writing Training feature data", file=sys.stderr)
+    print("\tBegin Writing Training feature data", file=sys.stderr)
     start_time = datetime.now()
     train_feature_df.write_parquet(
         train_features_parquet,
