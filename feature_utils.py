@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import polars as pl
 from skimage.feature import canny, hog, local_binary_pattern
-from skimage.filters import farid, gaussian
+from skimage.filters import gaussian
 
 
 def parallelize_dataframe(

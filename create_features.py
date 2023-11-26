@@ -194,7 +194,6 @@ def adjust_columns(
             "Scaled_Resolution": "Resolution",
             "Scaled_Width": "Width",
             "Scaled_Height": "Height",
-            "Scaled_Resolution": "Resolution",
         }
     else:
         raise ValueError("Unknown target image")
