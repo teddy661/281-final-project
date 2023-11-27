@@ -10,7 +10,7 @@ import polars as pl
 import psutil
 
 from feature_utils import (
-    TemplateMatching,
+    # TemplateMatching,
     compute_hsv_histograms,
     compute_lbp_image_and_histogram,
     compute_sift,
