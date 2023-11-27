@@ -212,14 +212,15 @@ def compute_template_wrapper(image_bytes: bytes, template_bytes: bytes) -> np.ar
     Wrapper function for compute_template. Must return a list to avoid polars poor
     handling of numpy arrays
     """
-    tm = TemplateMatching()
+    # tm = TemplateMatching()
     uint8_image = (np.load(BytesIO(image_bytes)) * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
 
     uint8_template = (np.load(BytesIO(template_bytes)) * 255.0).astype(np.uint8)
     gray_template = cv2.cvtColor(uint8_template, cv2.COLOR_RGB2GRAY)
 
-    template_match = tm.match_template(img=gray_image, template=gray_template)
+    # template_match = tm.match_template(img=gray_image, template=gray_template)
+    template_match = cv2.matchTemplate(gray_image, gray_template, cv2.TM_CCOEFF_NORMED)
     return convert_numpy_to_bytesio(template_match)
 
 
@@ -285,7 +286,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     df = parallelize_dataframe(df, template_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(
-        f"\tEnd Calculating Template Features:\t\t{end_time - start_time}",
+        f"\tEnd Calculating Template Features:\t{end_time - start_time}",
         file=sys.stderr,
     )
     return df
