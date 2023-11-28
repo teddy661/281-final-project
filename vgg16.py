@@ -36,12 +36,11 @@ image_df = image_df.with_columns(
 input_images = np.asarray(image_df["NumPy"].to_list())
 preprocessed_data = preprocess_input(input_images)
 dataset = tf.data.Dataset.from_tensor_slices(preprocessed_data)
+dataset = dataset.batch(100)
 
 # Change input shape
 input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
 new_input = Input(shape=input_shape)
-dataset = tf.data.Dataset.from_tensor_slices(preprocessed_data)
-dataset = dataset.batch(100)
 
 # Load the pre-trained VGG16 model
 # vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
