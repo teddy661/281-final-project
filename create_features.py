@@ -400,7 +400,7 @@ def main():
     )
     test_feature_df = test_feature_df.join(meta_image_df, on="ClassId")
     test_feature_df = process_features(test_feature_df, num_cpus)
-    test_feature_df.drop("Meta_Image")
+    test_feature_df = test_feature_df.drop("Meta_Image")
 
     # Write the Test parquet file
     print("\tBegin Writing Test feature data", file=sys.stderr)
@@ -428,7 +428,7 @@ def main():
     )
     train_feature_df = train_feature_df.join(meta_image_df, on="ClassId")
     train_feature_df = process_features(train_feature_df, num_cpus)
-    train_feature_df.drop("Meta_Image")
+    train_feature_df = train_feature_df.drop("Meta_Image")
 
     # Write the Training parquet file
     print("\tBegin Writing Training feature data", file=sys.stderr)
