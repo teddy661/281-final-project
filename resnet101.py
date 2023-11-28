@@ -1,6 +1,7 @@
 import numpy as np
+from tensorflow.keras import Model
 from tensorflow.keras.applications.resnet import ResNet101, preprocess_input
-from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Flatten, Input
 from tensorflow.keras.preprocessing import image
 
 # Change input shape
@@ -8,8 +9,10 @@ input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
 new_input = Input(shape=input_shape)
 
 # Load the pre-trained ResNet-101 model
-model = ResNet101(weights="imagenet", input_tensor=new_input, include_top=False)
+resnet101 = ResNet101(weights="imagenet", input_tensor=new_input, include_top=False)
 # resnet101 = ResNet101(weights='imagenet', input_tensor=new_input, include_top=False, pooling='avg')
+flatten_layer = Flatten()(resnet101.output)
+model = Model(inputs=resnet101.input, outputs=flatten_layer)
 for layer in model.layers:
     layer.trainable = False
 
@@ -32,6 +35,6 @@ img_path = "sign_data/Test/00000.png"
 embeddings = get_resnet_embeddings(img_path)
 
 print(model.summary())
-np.save("embeddings.npy", embeddings)
+np.save("resnet_embeddings.npy", embeddings)
 print(embeddings)
 print(embeddings.shape)

@@ -1,15 +1,19 @@
 import numpy as np
+from tensorflow.keras import Model
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
-from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Flatten, Input
 from tensorflow.keras.preprocessing import image
 
 # Change input shape
 input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
 new_input = Input(shape=input_shape)
 
-# Load VGG16 model with new input shape
-model = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
-# model = VGG16(weights="imagenet", input_tensor=new_input, include_top=False, pooling='avg')
+# Load the pre-trained VGG16 model
+vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
+# vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False, pooling='avg')
+flatten_layer = Flatten()(vgg16.output)
+model = Model(inputs=vgg16.input, outputs=flatten_layer)
+
 for layer in model.layers:
     layer.trainable = False
 
@@ -30,7 +34,8 @@ def get_vgg_embeddings(img_path):
 
 img_path = "sign_data/Test/00000.png"
 embeddings = get_vgg_embeddings(img_path)
+
 print(model.summary())
-np.save("embeddings.npy", embeddings)
+np.save("vgg16_embeddings.npy", embeddings)
 print(embeddings)
 print(embeddings.shape)
