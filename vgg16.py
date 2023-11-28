@@ -9,8 +9,8 @@ input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
 new_input = Input(shape=input_shape)
 
 # Load the pre-trained VGG16 model
-vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
-# vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False, pooling='avg')
+#vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
+vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False, pooling='avg')
 flatten_layer = Flatten()(vgg16.output)
 model = Model(inputs=vgg16.input, outputs=flatten_layer)
 

@@ -9,8 +9,8 @@ input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
 new_input = Input(shape=input_shape)
 
 # Load the pre-trained ResNet-101 model
-resnet101 = ResNet101(weights="imagenet", input_tensor=new_input, include_top=False)
-# resnet101 = ResNet101(weights='imagenet', input_tensor=new_input, include_top=False, pooling='avg')
+# resnet101 = ResNet101(weights="imagenet", input_tensor=new_input, include_top=False)
+resnet101 = ResNet101(weights='imagenet', input_tensor=new_input, include_top=False, pooling='avg')
 flatten_layer = Flatten()(resnet101.output)
 model = Model(inputs=resnet101.input, outputs=flatten_layer)
 for layer in model.layers:
