@@ -392,7 +392,7 @@ def main():
     ##
     ## DataFrames need to be chunked out since LBP takes so much memory.
     ##
-    num_rows_per_partition = 5000
+    num_rows_per_partition = 8000
     print(
         "Processing DataFrames in chunks of: ", num_rows_per_partition, file=sys.stderr
     )
@@ -420,18 +420,22 @@ def main():
     )
 
     del test_feature_df
-    for i, dfp in enumerate(test_feature_df_list):
+
+    i = 0
+    num_partitions = len(test_feature_df_list)
+    while test_feature_df_list:
         print(
-            f"\tProcessing Test partition {i+1:2d} of {len(test_feature_df_list):2d}",
+            f"\tProcessing Test partition {i+1:2d} of {num_partitions:2d}",
             file=sys.stderr,
         )
-        dfp = process_features(dfp, num_cpus)
+        dfp = process_features(test_feature_df_list.pop(0), num_cpus)
         if i == 0:
             test_feature_df = dfp.drop(["id', 'Meta_Image"])
         else:
             test_feature_df = pl.concat(
                 [test_feature_df, dfp.drop(["id', 'Meta_Image"])]
             )
+        i += 1
 
     # Write the Test parquet file
     print("\tBegin Writing Test feature data", file=sys.stderr)
@@ -468,18 +472,22 @@ def main():
     )
 
     del train_feature_df  # Free up memory
-    for i, dfp in enumerate(train_feature_df_list):
+
+    i = 0
+    num_partitions = len(train_feature_df_list)
+    while train_feature_df_list:
         print(
-            f"\tProcessing Train partition {i+1:2d} of {len(train_feature_df_list):2d}",
+            f"\tProcessing Train partition {i+1:2d} of {num_partitions:2d}",
             file=sys.stderr,
         )
-        dfp = process_features(dfp, num_cpus)
+        dfp = process_features(train_feature_df_list.pop(0), num_cpus)
         if i == 0:
             train_feature_df = dfp.drop(["id', 'Meta_Image"])
         else:
             train_feature_df = pl.concat(
                 [train_feature_df, dfp.drop(["id', 'Meta_Image"])]
             )
+        i += 1
 
     # Write the Training parquet file
     print("\tBegin Writing Training feature data", file=sys.stderr)

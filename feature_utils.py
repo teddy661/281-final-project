@@ -326,7 +326,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     Expect an input image on the range 0-1 float32. Convert to 255 scale
     for color space conversion. Convert to uint8 for LBP computation.
     After much trial and error the best parameters are:
-        radius = 3
+        radius = 1
         n_points = 16
         method = "default"
     Convert Image to grayscale and then stretch the histogram to the full range
@@ -335,7 +335,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     we would like to bump this up to 3 and 24 that will require segmenting the
     input of the training data
     """
-    radius = 3
+    radius = 1
     n_points = 16
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
