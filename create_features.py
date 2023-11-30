@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import polars as pl
 import psutil
+import multiprocessing as mp 
 
 from feature_utils import (
     # TemplateMatching,
@@ -327,6 +328,9 @@ def main():
         num_cpus = args.num_cpus
     else:
         num_cpus = psutil.cpu_count(logical=False)
+
+    mp.freeze_support()
+    mp.set_start_method('spawn')
 
     if num_cpus > 12 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
