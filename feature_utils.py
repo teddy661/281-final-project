@@ -334,7 +334,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     There will be 18 types returned.
     """
     radius = 2
-    n_points = 8
+    n_points = 12
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
