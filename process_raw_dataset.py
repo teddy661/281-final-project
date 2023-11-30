@@ -494,11 +494,11 @@ def main():
     else:
         num_cpus = psutil.cpu_count(logical=False)
 
-    if num_cpus > 12 and args.num_cpus is None:
+    if num_cpus > 4 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
         print(f"Forcing to 12 cpus", file=sys.stderr)
         print(f"Set number of cpus with -n option to override", file=sys.stderr)
-        num_cpus = 12
+        num_cpus = 4
 
     print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
     print(f"Begin Processing Meta data.", file=sys.stderr)

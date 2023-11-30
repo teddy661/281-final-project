@@ -332,13 +332,13 @@ def main():
     mp.freeze_support()
     mp.set_start_method('spawn')
 
-    if num_cpus > 12 and args.num_cpus is None:
+    if num_cpus > 4 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
         print("Forcing to 12 cpus", file=sys.stderr)
         print(
             "Re-Run and set number of cpus with -n option to override", file=sys.stderr
         )
-        num_cpus = 12
+        num_cpus = 4
 
     train_parquet = script_dir.joinpath("data/train.parquet")
     train_features_parquet = script_dir.joinpath("data/train_features.parquet")
