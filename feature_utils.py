@@ -336,7 +336,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     input of the training data
     """
     radius = 1
-    n_points = 16
+    n_points = 10
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
