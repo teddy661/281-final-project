@@ -329,12 +329,15 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     After much trial and error the best parameters are:
         radius = 3
         n_points = 16
-        method = "uniform"
+        method = "default" 
     Convert Image to grayscale and then stretch the histogram to the full range
-    There will be 18 types returned.
+    There will be 18 types returned. we know that radius 2 points 12  will not 
+    run out of memory on a 256GB machine. In an attempt to get better accuracy
+    we would like to bump this up to 3 and 24 that will require segmenting the 
+    input of the training data
     """
-    radius = 2
-    n_points = 12
+    radius = 3
+    n_points = 24
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
