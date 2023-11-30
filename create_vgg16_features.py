@@ -59,7 +59,7 @@ def process_features(input_df: pl.DataFrame) -> pl.DataFrame:
 def preprocess_features(feature_file: Path) -> pl.DataFrame:
     print("Begin Reading Feature Parquet", file=sys.stderr)
     start_time = datetime.now()
-    feature_df = pl.read_parquet(feature_file, use_pyarrow=True, memory_map=True)
+    feature_df = pl.read_parquet(feature_file, memory_map=True)
     if "VGG16" in feature_df.columns:
         print("Dropping Existing VGG16 Column", file=sys.stderr)
         feature_df = feature_df.drop("VGG16")
@@ -99,7 +99,7 @@ def main():
         test_features_file,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
@@ -122,7 +122,7 @@ def main():
         train_features_file,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(

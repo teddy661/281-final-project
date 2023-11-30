@@ -53,7 +53,7 @@ def convert_to_bytes(df: pl.DataFrame) -> pl.DataFrame:
 def main():
     num_cpus = 8
     test_parquet = Path("data/test.parquet.lists")
-    test_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
+    test_df = pl.read_parquet(test_parquet, memory_map=True)
     print(test_df.head())
     print(test_df.columns)
     print(80 * "-")

@@ -512,7 +512,7 @@ def main():
         meta_parquet,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
@@ -538,7 +538,7 @@ def main():
         test_parquet,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
@@ -563,7 +563,7 @@ def main():
         train_parquet,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(

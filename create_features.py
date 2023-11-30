@@ -388,13 +388,13 @@ def main():
         f"Using {target_image} as source image for feature generation", file=sys.stderr
     )
 
-    meta_df = pl.read_parquet(meta_parquet, use_pyarrow=True, memory_map=True)
+    meta_df = pl.read_parquet(meta_parquet, memory_map=True)
     meta_image_df = meta_df.select(["ClassId", "Meta_Image"])
     del meta_df
 
     print("Begin Reading Test Parquet", file=sys.stderr)
     start_time = datetime.now()
-    test_feature_df = pl.read_parquet(test_parquet, use_pyarrow=True, memory_map=True)
+    test_feature_df = pl.read_parquet(test_parquet, memory_map=True)
     end_time = datetime.now()
     print(f"End Reading Test Parquet:\t\t\t{end_time-start_time}", file=sys.stderr)
     test_feature_df = adjust_columns(
@@ -445,7 +445,7 @@ def main():
         test_features_parquet,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        #use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
@@ -456,7 +456,7 @@ def main():
 
     print("Begin Reading Training Parquet", file=sys.stderr)
     start_time = datetime.now()
-    train_feature_df = pl.read_parquet(train_parquet, use_pyarrow=True, memory_map=True)
+    train_feature_df = pl.read_parquet(train_parquet, memory_map=True)
     end_time = datetime.now()
     print(f"End Reading Training Parquet:\t\t\t{end_time-start_time}", file=sys.stderr)
     train_feature_df = adjust_columns(
@@ -507,7 +507,7 @@ def main():
         train_features_parquet,
         compression="zstd",
         compression_level=5,
-        use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
