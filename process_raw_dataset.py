@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing as mp
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -584,4 +585,6 @@ def main():
 
 
 if __name__ == "__main__":
+    mp.freeze_support()
+    mp.set_start_method("spawn")
     main()

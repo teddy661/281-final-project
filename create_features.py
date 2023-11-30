@@ -240,52 +240,73 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     """
     Need to wrap everything so we can process multiple files
     """
-    # HSV Histograms
-    print("\tBegin Calculating HSV Histograms", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating HSV Histograms:\t\t{end_time - start_time}", file=sys.stderr
+    num_rows_per_partition = 3000
+    df_input_list = (
+        df.with_row_count("id")
+        .with_columns(
+            pl.col("id").map_elements(lambda i: int(i / num_rows_per_partition))
+        )
+        .partition_by("id")
     )
+    del df  # Free up some memory
+    for i, df in enumerate(df_input_list):
+        print(
+            f"Processing partition {i+1:2d} of {len(df_input_list):2d}", file=sys.stderr
+        )
+        # HSV Histograms
+        print("\tBegin Calculating HSV Histograms", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
+        end_time = datetime.now()
+        print(
+            f"\tEnd Calculating HSV Histograms:\t\t{end_time - start_time}",
+            file=sys.stderr,
+        )
 
-    # LBP Image and Histogram
-    print("\tBegin Calculating LBP Histograms", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating LBP Histograms:\t\t{end_time - start_time}", file=sys.stderr
-    )
+        # LBP Image and Histogram
+        print("\tBegin Calculating LBP Histograms", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
+        end_time = datetime.now()
+        print(
+            f"\tEnd Calculating LBP Histograms:\t\t{end_time - start_time}",
+            file=sys.stderr,
+        )
 
-    # HOG Features
-    print("\tBegin Calculating HOG Features", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating HOG Features:\t\t{end_time - start_time}", file=sys.stderr
-    )
+        # HOG Features
+        print("\tBegin Calculating HOG Features", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
+        end_time = datetime.now()
+        print(
+            f"\tEnd Calculating HOG Features:\t\t{end_time - start_time}",
+            file=sys.stderr,
+        )
 
-    # SIFT Features
-    print("\tBegin Calculating SIFT Features", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}", file=sys.stderr
-    )
+        # SIFT Features
+        print("\tBegin Calculating SIFT Features", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
+        end_time = datetime.now()
+        print(
+            f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}",
+            file=sys.stderr,
+        )
 
-    # Template Feature
-    print("\tBegin Calculating Template Features", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, template_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating Template Features:\t{end_time - start_time}",
-        file=sys.stderr,
-    )
-    return df
+        # Template Feature
+        print("\tBegin Calculating Template Features", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(df, template_parallel_wrapper, num_cpus)
+        end_time = datetime.now()
+        print(
+            f"\tEnd Calculating Template Features:\t{end_time - start_time}",
+            file=sys.stderr,
+        )
+        if i == 0:
+            df_output = df.drop(["id"])
+        else:
+            df_output = pl.concat([df_output, df.drop(["id"])])
+    return df_output
 
 
 def main():
@@ -399,7 +420,7 @@ def main():
     test_feature_df = test_feature_df.drop("Meta_Image")
 
     # Write the Test parquet file
-    print("\tBegin Writing Test feature data", file=sys.stderr)
+    print("Begin Writing Test feature data", file=sys.stderr)
     start_time = datetime.now()
     test_feature_df.write_parquet(
         test_features_parquet,
@@ -408,9 +429,7 @@ def main():
         use_pyarrow=True,
     )
     end_time = datetime.now()
-    print(
-        f"\tEnd Writing Test feature data:\t\t{end_time - start_time}", file=sys.stderr
-    )
+    print(f"End Writing Test feature data:\t\t{end_time - start_time}", file=sys.stderr)
 
     del test_feature_df  # Free up memory
 
@@ -427,7 +446,7 @@ def main():
     train_feature_df = train_feature_df.drop("Meta_Image")
 
     # Write the Training parquet file
-    print("\tBegin Writing Training feature data", file=sys.stderr)
+    print("Begin Writing Training feature data", file=sys.stderr)
     start_time = datetime.now()
     train_feature_df.write_parquet(
         train_features_parquet,
@@ -437,7 +456,7 @@ def main():
     )
     end_time = datetime.now()
     print(
-        f"\tEnd Writing Training feature data:\t{end_time - start_time}",
+        f"End Writing Training feature data:\t{end_time - start_time}",
         file=sys.stderr,
     )
 
