@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing as mp
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -8,17 +9,11 @@ import cv2
 import numpy as np
 import polars as pl
 import psutil
-import multiprocessing as mp 
 
-from feature_utils import (
-    # TemplateMatching,
-    compute_hsv_histograms,
-    compute_lbp_image_and_histogram,
-    compute_sift,
-    convert_numpy_to_bytesio,
-    create_hog_features,
-    parallelize_dataframe,
-)
+from feature_utils import compute_hsv_histograms  # TemplateMatching,
+from feature_utils import (compute_lbp_image_and_histogram, compute_sift,
+                           convert_numpy_to_bytesio, create_hog_features,
+                           parallelize_dataframe)
 
 
 def compute_hsv_histograms_wapper(image: bytes) -> tuple:
@@ -329,9 +324,6 @@ def main():
     else:
         num_cpus = psutil.cpu_count(logical=False)
 
-    mp.freeze_support()
-    mp.set_start_method('spawn')
-
     if num_cpus > 4 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
         print("Forcing to 12 cpus", file=sys.stderr)
@@ -458,4 +450,6 @@ def main():
 
 
 if __name__ == "__main__":
+    mp.freeze_support()
+    mp.set_start_method("spawn")
     main()

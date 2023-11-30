@@ -1,21 +1,20 @@
 import itertools
+import multiprocessing as mp
 import os
 from io import BytesIO
 from typing import Callable
-
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-import multiprocessing as mp
-
 # import tensorflow as tf
 from matplotlib import ticker
 from PIL import Image
 from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import gaussian
+
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 # Class to match templates (Advanced Feature Extraction)
@@ -329,11 +328,11 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     After much trial and error the best parameters are:
         radius = 3
         n_points = 16
-        method = "default" 
+        method = "default"
     Convert Image to grayscale and then stretch the histogram to the full range
-    There will be 18 types returned. we know that radius 2 points 12  will not 
+    There will be 18 types returned. we know that radius 2 points 12  will not
     run out of memory on a 256GB machine. In an attempt to get better accuracy
-    we would like to bump this up to 3 and 24 that will require segmenting the 
+    we would like to bump this up to 3 and 24 that will require segmenting the
     input of the training data
     """
     radius = 3
