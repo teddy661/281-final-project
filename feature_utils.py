@@ -339,7 +339,7 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
     lbp_image = local_binary_pattern(
-        stretched_image, n_points, radius, method="uniform"
+        stretched_image, n_points, radius, method="default"
     )
     n_bins = int(lbp_image.max() + 1)
     lbp_hist, lbp_edges = np.histogram(
