@@ -1,21 +1,20 @@
 import itertools
+import multiprocessing as mp
 import os
 from io import BytesIO
-from multiprocessing import Pool
 from typing import Callable
-
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-
 # import tensorflow as tf
 from matplotlib import ticker
 from PIL import Image
 from skimage.feature import canny, hog, local_binary_pattern
 from skimage.filters import gaussian
+
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 # Class to match templates (Advanced Feature Extraction)
@@ -194,7 +193,7 @@ def parallelize_dataframe(
     df_split = []
     for start, rows in zip(start_pos, num_rows):
         df_split.append(df.slice(start, rows))
-    pool = Pool(n_cores)
+    pool = mp.Pool(n_cores)
     new_df = pl.concat(pool.map(func, df_split))
     pool.close()
     pool.join()
@@ -327,19 +326,22 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     Expect an input image on the range 0-1 float32. Convert to 255 scale
     for color space conversion. Convert to uint8 for LBP computation.
     After much trial and error the best parameters are:
-        radius = 3
+        radius = 1
         n_points = 16
-        method = "uniform"
+        method = "default"
     Convert Image to grayscale and then stretch the histogram to the full range
-    There will be 18 types returned.
+    There will be 18 types returned. we know that radius 2 points 12  will not
+    run out of memory on a 256GB machine. In an attempt to get better accuracy
+    we would like to bump this up to 3 and 24 that will require segmenting the
+    input of the training data
     """
-    radius = 3
-    n_points = 16
+    radius = 1
+    n_points = 10
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
     lbp_image = local_binary_pattern(
-        stretched_image, n_points, radius, method="uniform"
+        stretched_image, n_points, radius, method="default"
     )
     n_bins = int(lbp_image.max() + 1)
     lbp_hist, lbp_edges = np.histogram(
