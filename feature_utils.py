@@ -1,7 +1,6 @@
 import itertools
 import os
 from io import BytesIO
-from multiprocessing import Pool
 from typing import Callable
 
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -10,6 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+import multiprocessing as mp
 
 # import tensorflow as tf
 from matplotlib import ticker
@@ -194,7 +194,7 @@ def parallelize_dataframe(
     df_split = []
     for start, rows in zip(start_pos, num_rows):
         df_split.append(df.slice(start, rows))
-    pool = Pool(n_cores)
+    pool = mp.Pool(n_cores)
     new_df = pl.concat(pool.map(func, df_split))
     pool.close()
     pool.join()
@@ -333,8 +333,8 @@ def compute_lbp_image_and_histogram(image: np.array) -> np.array:
     Convert Image to grayscale and then stretch the histogram to the full range
     There will be 18 types returned.
     """
-    radius = 3
-    n_points = 16
+    radius = 2
+    n_points = 8
     uint8_image = (image * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
     stretched_image = stretch_gray_histogram(gray_image)
