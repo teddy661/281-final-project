@@ -332,7 +332,7 @@ def main():
 
     if num_cpus > 4 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
-        print("Forcing to 12 cpus", file=sys.stderr)
+        print("Forcing to 4 cpus", file=sys.stderr)
         print(
             "Re-Run and set number of cpus with -n option to override", file=sys.stderr
         )
@@ -388,6 +388,15 @@ def main():
         f"Using {target_image} as source image for feature generation", file=sys.stderr
     )
 
+    ############################################################################
+    ##
+    ## DataFrames need to be chunked out since LBP takes so much memory.
+    ##
+    num_rows_per_partition = 5000
+    print(
+        "Processing DataFrames in chunks of: ", num_rows_per_partition, file=sys.stderr
+    )
+
     meta_df = pl.read_parquet(meta_parquet, use_pyarrow=True, memory_map=True)
     meta_image_df = meta_df.select(["ClassId", "Meta_Image"])
     del meta_df
@@ -401,7 +410,7 @@ def main():
         test_feature_df, target_image, source_image_columns
     )
     test_feature_df = test_feature_df.join(meta_image_df, on="ClassId")
-    num_rows_per_partition = 3000
+
     test_feature_df_list = (
         test_feature_df.with_row_count("id")
         .with_columns(
@@ -409,15 +418,20 @@ def main():
         )
         .partition_by("id")
     )
-    
+
     del test_feature_df
     for i, dfp in enumerate(test_feature_df_list):
-        print(f"\tProcessing Test partition {i+1:2d} of {len(test_feature_df_list):2d}", file=sys.stderr)
+        print(
+            f"\tProcessing Test partition {i+1:2d} of {len(test_feature_df_list):2d}",
+            file=sys.stderr,
+        )
         dfp = process_features(dfp, num_cpus)
         if i == 0:
             test_feature_df = dfp.drop(["id', 'Meta_Image"])
         else:
-            test_feature_df = pl.concat([test_feature_df, dfp.drop(["id', 'Meta_Image"])])
+            test_feature_df = pl.concat(
+                [test_feature_df, dfp.drop(["id', 'Meta_Image"])]
+            )
 
     # Write the Test parquet file
     print("\tBegin Writing Test feature data", file=sys.stderr)
@@ -433,7 +447,7 @@ def main():
         f"\tEnd Writing Test feature data:\t\t{end_time - start_time}", file=sys.stderr
     )
 
-    del test_feature_df, test_feature_df_list # Free up memory
+    del test_feature_df, test_feature_df_list  # Free up memory
 
     print("Begin Reading Training Parquet", file=sys.stderr)
     start_time = datetime.now()
@@ -452,16 +466,20 @@ def main():
         )
         .partition_by("id")
     )
-    
-    del train_feature_df # Free up memory
+
+    del train_feature_df  # Free up memory
     for i, dfp in enumerate(train_feature_df_list):
-        print(f"\tProcessing Train partition {i+1:2d} of {len(test_feature_df_list):2d}", file=sys.stderr)
+        print(
+            f"\tProcessing Train partition {i+1:2d} of {len(train_feature_df_list):2d}",
+            file=sys.stderr,
+        )
         dfp = process_features(dfp, num_cpus)
         if i == 0:
             train_feature_df = dfp.drop(["id', 'Meta_Image"])
         else:
-            train_feature_df = pl.concat([test_feature_df, dfp.drop(["id', 'Meta_Image"])])
-
+            train_feature_df = pl.concat(
+                [train_feature_df, dfp.drop(["id', 'Meta_Image"])]
+            )
 
     # Write the Training parquet file
     print("\tBegin Writing Training feature data", file=sys.stderr)
