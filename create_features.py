@@ -388,15 +388,6 @@ def main():
         f"Using {target_image} as source image for feature generation", file=sys.stderr
     )
 
-    ############################################################################
-    ##
-    ## DataFrames need to be chunked out since LBP takes so much memory.
-    ##
-    num_rows_per_partition = 8000
-    print(
-        "Processing DataFrames in chunks of: ", num_rows_per_partition, file=sys.stderr
-    )
-
     meta_df = pl.read_parquet(meta_parquet, use_pyarrow=True, memory_map=True)
     meta_image_df = meta_df.select(["ClassId", "Meta_Image"])
     del meta_df
@@ -411,6 +402,16 @@ def main():
     )
     test_feature_df = test_feature_df.join(meta_image_df, on="ClassId")
 
+    ############################################################################
+    ##
+    ## DataFrames need to be chunked out since LBP takes so much memory.
+    ##
+    num_rows_per_partition = test_feature_df.height + 1
+    print(
+        "Processing Test DataFrame in chunks of: ",
+        num_rows_per_partition,
+        file=sys.stderr,
+    )
     test_feature_df_list = (
         test_feature_df.with_row_count("id")
         .with_columns(
@@ -463,6 +464,16 @@ def main():
     )
     train_feature_df = train_feature_df.join(meta_image_df, on="ClassId")
 
+    ############################################################################
+    ##
+    ## DataFrames need to be chunked out since LBP takes so much memory.
+    ##
+    num_rows_per_partition = train_feature_df.height + 1
+    print(
+        "Processing Train DataFrame in chunks of: ",
+        num_rows_per_partition,
+        file=sys.stderr,
+    )
     train_feature_df_list = (
         train_feature_df.with_row_count("id")
         .with_columns(
