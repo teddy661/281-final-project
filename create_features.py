@@ -11,9 +11,13 @@ import polars as pl
 import psutil
 
 from feature_utils import compute_hsv_histograms  # TemplateMatching,
-from feature_utils import (compute_lbp_image_and_histogram, compute_sift,
-                           convert_numpy_to_bytesio, create_hog_features,
-                           parallelize_dataframe)
+from feature_utils import (
+    compute_lbp_image_and_histogram,
+    compute_sift,
+    convert_numpy_to_bytesio,
+    create_hog_features,
+    parallelize_dataframe,
+)
 
 
 def compute_hsv_histograms_wapper(image: bytes) -> tuple:
@@ -75,7 +79,7 @@ def compute_hog_features_wrapper(image: bytes) -> tuple:
     return list(hog_features), convert_numpy_to_bytesio(hog_image)
 
 
-def hsv_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def hsv_parallel_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -104,7 +108,7 @@ def hsv_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def lbp_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def lbp_parallel_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -126,7 +130,7 @@ def lbp_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def sift_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def sift_parallel_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -142,7 +146,7 @@ def sift_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def hog_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def hog_parallel_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -203,40 +207,61 @@ def adjust_columns(
     return df
 
 
-def compute_template_wrapper(image_bytes: bytes, template_bytes: bytes) -> np.array:
+def compute_template_wrapper(image_bytes: bytes, meta_df: pl.DataFrame) -> np.array:
     """
     Wrapper function for compute_template. Must return a list to avoid polars poor
     handling of numpy arrays
     """
-    # tm = TemplateMatching()
+    # Pad the image to make sure it's larger than the template
+    pad_rows = 4
+    pad_cols = 4
+
     uint8_image = (np.load(BytesIO(image_bytes)) * 255.0).astype(np.uint8)
     gray_image = cv2.cvtColor(uint8_image, cv2.COLOR_RGB2GRAY)
+    gray_image = np.pad(
+        gray_image,
+        ((pad_rows, pad_rows), (pad_cols, pad_cols)),
+        mode="constant",
+        constant_values=0,
+    )
 
-    uint8_template = (np.load(BytesIO(template_bytes)) * 255.0).astype(np.uint8)
-    gray_template = cv2.cvtColor(uint8_template, cv2.COLOR_RGB2GRAY)
+    i = 0
+    for row in meta_df.iter_rows(named=True):
+        template_bytes = row["Scaled_Meta_Image"]
+        uint8_template = (np.load(BytesIO(template_bytes)) * 255.0).astype(np.uint8)
+        gray_template = cv2.cvtColor(uint8_template, cv2.COLOR_RGB2GRAY)
+        template_match = cv2.matchTemplate(
+            gray_image, gray_template, cv2.TM_CCOEFF_NORMED
+        )
+        if i == 0:
+            final_array = (
+                template_match.ravel()
+            )  # Flatten the array These are all 9x9 due to scaling and padding
+        else:
+            final_array = np.concatenate((final_array, template_match.ravel()))
+        i += 1
+    return list(final_array)
 
-    # template_match = tm.match_template(img=gray_image, template=gray_template)
-    template_match = cv2.matchTemplate(gray_image, gray_template, cv2.TM_CCOEFF_NORMED)
-    return convert_numpy_to_bytesio(template_match)
 
-
-def template_parallel_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def template_parallel_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
     This one is for the template
     """
     df = df.with_columns(
-        pl.struct(["Image", "Meta_Image"])
+        pl.struct(["Image", "Scaled_Meta_Image"])
         .map_elements(
-            lambda x: compute_template_wrapper(x["Image"], x["Meta_Image"]),
+            lambda x: compute_template_wrapper(x["Image"], meta_df),
         )
         .alias("Template_Pattern")
     )
     return df
 
 
-def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
+def process_features(
+    df: pl.DataFrame, meta_df: pl.DataFrame, num_cpus: int
+) -> pl.DataFrame:
     """
     Need to wrap everything so we can process multiple files
     """
@@ -244,7 +269,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     # HSV Histograms
     print("\tBegin Calculating HSV Histograms", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, hsv_parallel_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, hsv_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(
         f"\tEnd Calculating HSV Histograms:\t\t{end_time - start_time}",
@@ -254,7 +279,7 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     # LBP Image and Histogram
     print("\tBegin Calculating LBP Histograms", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, lbp_parallel_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, lbp_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(
         f"\tEnd Calculating LBP Histograms:\t\t{end_time - start_time}",
@@ -264,27 +289,27 @@ def process_features(df: pl.DataFrame, num_cpus: int) -> pl.DataFrame:
     # HOG Features
     print("\tBegin Calculating HOG Features", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, hog_parallel_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, hog_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(
         f"\tEnd Calculating HOG Features:\t\t{end_time - start_time}",
         file=sys.stderr,
     )
 
-    # SIFT Features
-    print("\tBegin Calculating SIFT Features", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(
-        f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}",
-        file=sys.stderr,
-    )
+    # SIFT Features - Disable SIFT for now
+    # print("\tBegin Calculating SIFT Features", file=sys.stderr)
+    # start_time = datetime.now()
+    # df = parallelize_dataframe(df, sift_parallel_wrapper, num_cpus)
+    # end_time = datetime.now()
+    # print(
+    #     f"\tEnd Calculating SIFT Features:\t\t{end_time - start_time}",
+    #     file=sys.stderr,
+    # )
 
     # Template Feature
     print("\tBegin Calculating Template Features", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, template_parallel_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, template_parallel_wrapper, num_cpus)
     end_time = datetime.now()
     print(
         f"\tEnd Calculating Template Features:\t{end_time - start_time}",
@@ -389,7 +414,7 @@ def main():
     )
 
     meta_df = pl.read_parquet(meta_parquet, memory_map=True)
-    meta_image_df = meta_df.select(["ClassId", "Meta_Image"])
+    meta_image_df = meta_df.select(["ClassId", "Scaled_Meta_Image"]).sort(by="ClassId")
     del meta_df
 
     print("Begin Reading Test Parquet", file=sys.stderr)
@@ -429,12 +454,12 @@ def main():
             f"\tProcessing Test partition {i+1:2d} of {num_partitions:2d}",
             file=sys.stderr,
         )
-        dfp = process_features(test_feature_df_list.pop(0), num_cpus)
+        dfp = process_features(test_feature_df_list.pop(0), meta_image_df, num_cpus)
         if i == 0:
-            test_feature_df = dfp.drop(["id', 'Meta_Image"])
+            test_feature_df = dfp.drop(["id', 'Scaled_Meta_Image"])
         else:
             test_feature_df = pl.concat(
-                [test_feature_df, dfp.drop(["id', 'Meta_Image"])]
+                [test_feature_df, dfp.drop(["id', 'Scaled_Meta_Image"])]
             )
         i += 1
 
@@ -445,7 +470,7 @@ def main():
         test_features_parquet,
         compression="zstd",
         compression_level=5,
-        #use_pyarrow=True,
+        # use_pyarrow=True,
     )
     end_time = datetime.now()
     print(
@@ -491,12 +516,12 @@ def main():
             f"\tProcessing Train partition {i+1:2d} of {num_partitions:2d}",
             file=sys.stderr,
         )
-        dfp = process_features(train_feature_df_list.pop(0), num_cpus)
+        dfp = process_features(train_feature_df_list.pop(0), meta_image_df, num_cpus)
         if i == 0:
-            train_feature_df = dfp.drop(["id', 'Meta_Image"])
+            train_feature_df = dfp.drop(["id', 'Scaled_Meta_Image"])
         else:
             train_feature_df = pl.concat(
-                [train_feature_df, dfp.drop(["id', 'Meta_Image"])]
+                [train_feature_df, dfp.drop(["id', 'Scaled_Meta_Image"])]
             )
         i += 1
 
