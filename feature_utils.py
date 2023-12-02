@@ -8,6 +8,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+
 # import tensorflow as tf
 from matplotlib import ticker
 from PIL import Image
@@ -177,7 +178,10 @@ from skimage.filters import gaussian
 
 
 def parallelize_dataframe(
-    df: pl.DataFrame, func: Callable[[pl.DataFrame], pl.DataFrame], n_cores: int = 4
+    df: pl.DataFrame,
+    meta_df: pl.DataFrame,
+    func: Callable[[pl.DataFrame], pl.DataFrame],
+    n_cores: int = 4,
 ) -> pl.DataFrame:
     """
     Enable parallel processing of a dataframe by splitting it by the number of cores
@@ -193,10 +197,22 @@ def parallelize_dataframe(
     df_split = []
     for start, rows in zip(start_pos, num_rows):
         df_split.append(df.slice(start, rows))
+    func_list = list(itertools.repeat(func, len(df_split)))
+    meta_list = list(itertools.repeat(meta_df, len(df_split)))
+    pool_args = list(zip(df_split, meta_list, func_list))
     pool = mp.Pool(n_cores)
-    new_df = pl.concat(pool.map(func, df_split))
+    new_df = pl.concat(pool.map(process_chunk, pool_args))
     pool.close()
     pool.join()
+    return new_df
+
+
+def process_chunk(args: tuple) -> pl.DataFrame:
+    """
+    Process a chunk of the dataframe
+    """
+    df, meta_df, func = args
+    new_df = func(df, meta_df)
     return new_df
 
 
