@@ -355,13 +355,13 @@ def main():
     else:
         num_cpus = psutil.cpu_count(logical=False)
 
-    if num_cpus > 4 and args.num_cpus is None:
+    if num_cpus > 8 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
-        print("Forcing to 4 cpus", file=sys.stderr)
+        print("Forcing to 8 cpus", file=sys.stderr)
         print(
             "Re-Run and set number of cpus with -n option to override", file=sys.stderr
         )
-        num_cpus = 4
+        num_cpus = 8
 
     train_parquet = script_dir.joinpath("data/train.parquet")
     train_features_parquet = script_dir.joinpath("data/train_features.parquet")

@@ -179,7 +179,7 @@ def pad_cropped_image_to_original(original_image, cropped_image) -> np.array:
     return return_array
 
 
-def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def read_image_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -202,7 +202,7 @@ def read_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def crop_to_roi_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def crop_to_roi_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -234,7 +234,7 @@ def crop_to_roi_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def rescale_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def rescale_image_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -258,7 +258,9 @@ def rescale_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def stretch_histogram_lab_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def stretch_histogram_lab_wrapper(
+    df: pl.DataFrame, meta_df: pl.DataFrame
+) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -276,7 +278,9 @@ def stretch_histogram_lab_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def stretch_histogram_hsv_wrapper(
+    df: pl.DataFrame, meta_df: pl.DataFrame
+) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -294,7 +298,7 @@ def stretch_histogram_hsv_wrapper(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def calculate_meta_image_stats(df: pl.DataFrame) -> pl.DataFrame:
+def calculate_meta_image_stats(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -315,7 +319,7 @@ def calculate_meta_image_stats(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def rescale_meta_image_wrapper(df: pl.DataFrame) -> pl.DataFrame:
+def rescale_meta_image_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -355,16 +359,18 @@ def process_meta_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFr
     )
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
+    df = parallelize_dataframe(df, None, read_image_wrapper, num_cpus)
     df = df.rename({"Image": "Meta_Image"})
-    df = parallelize_dataframe(df, calculate_meta_image_stats, num_cpus)
-    df = parallelize_dataframe(df, rescale_meta_image_wrapper, num_cpus)
+    df = parallelize_dataframe(df, None, calculate_meta_image_stats, num_cpus)
+    df = parallelize_dataframe(df, None, rescale_meta_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Reading Images:\t\t{end_time - start_time}", file=sys.stderr)
     return df
 
 
-def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
+def process_csv(
+    csv_file: Path, root_dir: Path, meta_df: pl.DataFrame, num_cpus: int
+) -> pl.DataFrame:
     """
     Read the csv file into a polars dataframe.
     Read the image into a numpy array and store it in BytesIO object in numpy format
@@ -388,21 +394,21 @@ def process_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFrame:
     # PIL is faster than cv2 in reading images
     print(f"\tBegin Reading Images", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, read_image_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, read_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Reading Images:\t\t{end_time - start_time}", file=sys.stderr)
 
     # Crop the image to the Roi values provided in the dataset
     print(f"\tBegin Cropping Images", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, crop_to_roi_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, crop_to_roi_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Cropping Images:\t\t{end_time - start_time}", file=sys.stderr)
 
     # Rescale the image to our standard size which is 64x64
     print(f"\tBegin Re-scaling Images", file=sys.stderr)
     start_time = datetime.now()
-    df = parallelize_dataframe(df, rescale_image_wrapper, num_cpus)
+    df = parallelize_dataframe(df, meta_df, rescale_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
 
@@ -495,11 +501,11 @@ def main():
     else:
         num_cpus = psutil.cpu_count(logical=False)
 
-    if num_cpus > 4 and args.num_cpus is None:
+    if num_cpus > 8 and args.num_cpus is None:
         print(f"Number of cpus might be too high: {num_cpus}", file=sys.stderr)
-        print(f"Forcing to 12 cpus", file=sys.stderr)
+        print(f"Forcing to 8 cpus", file=sys.stderr)
         print(f"Set number of cpus with -n option to override", file=sys.stderr)
-        num_cpus = 4
+        num_cpus = 8
 
     print(f"Multiprocessing on {num_cpus} CPUs", file=sys.stderr)
     print(f"Begin Processing Meta data.", file=sys.stderr)
@@ -525,12 +531,11 @@ def main():
         file=sys.stderr,
     )
     print(meta_df.head())
-    del meta_df  # free up some memory
-
+    meta_df = meta_df.select(["ClassId", "Scaled_Meta_Image"])
     print("Begin Processing test data.", file=sys.stderr)
     train_start_time = datetime.now()
     test_csv = root_dir.joinpath("Test.csv")
-    test_df = process_csv(test_csv, root_dir, num_cpus)
+    test_df = process_csv(test_csv, root_dir, meta_df, num_cpus)
 
     print(f"\tBegin Writing test data", file=sys.stderr)
     start_time = datetime.now()
@@ -556,7 +561,7 @@ def main():
     print(f"Begin Processing train data.", file=sys.stderr)
     test_start_time = datetime.now()
     train_csv = root_dir.joinpath("Train.csv")
-    train_df = process_csv(train_csv, root_dir, num_cpus)
+    train_df = process_csv(train_csv, root_dir, meta_df, num_cpus)
     print(f"\tBegin Writing train data.", file=sys.stderr)
     start_time = datetime.now()
     train_df.write_parquet(
