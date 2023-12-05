@@ -21,16 +21,16 @@ def prelim_validate_dataset_dir(root_dir: Path) -> bool:
     files = ["Meta_full.csv", "Meta.csv", "Test.csv", "Train.csv"]
     dirs = ["Meta", "Test", "Train"]
     for c_file in files:
-        if not root_dir.joinpath(c_file).exists:
+        if not root_dir.joinpath(c_file).exists():
             print(f"Required File is Missing: {c_file}", file=sys.stderr)
             prelim_ready = False
     for c_dir in dirs:
-        if not root_dir.joinpath(c_dir).exists:
+        if not root_dir.joinpath(c_dir).exists():
             print(f"Required Directory is Missing: {c_dir}", file=sys.stderr)
             prelim_ready = False
         elif c_dir == "Train":
             for d in range(43):
-                if not root_dir.joinpath(c_dir).joinpath(str(d)).exists:
+                if not root_dir.joinpath(c_dir).joinpath(str(d)).exists():
                     print("Required Directory is Missing: {d}", file=sys.stderr)
                     prelim_ready = False
     return prelim_ready
@@ -471,7 +471,7 @@ def main():
     prog_name = parser.prog
 
     root_dir = Path(args.root_dir)
-    if not root_dir.exists:
+    if not root_dir.exists():
         print(f"Directory does not exit: {root_dir} ", file=sys.stderr)
         exit(1)
     prelim_ready = prelim_validate_dataset_dir(root_dir)
