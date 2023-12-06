@@ -26,31 +26,26 @@ tf.get_logger().setLevel("ERROR")
 
 
 def process_features(input_df: pl.DataFrame) -> pl.DataFrame:
-    image_df = input_df.select(["Image"])
+    image_df = input_df.select(["ImageNet_Scaled_Image"])
     image_df = image_df.with_columns(
         pl.col("Image").map_elements(lambda x: np.load(BytesIO(x))).alias("NumPy")
     )
     input_images = np.asarray(image_df["NumPy"].to_list())
     input_images_tf = tf.convert_to_tensor(input_images)
-    input_images_resized = tf.image.resize(input_images_tf, (256, 256))
-    crop_size = 224
-    images_cropped = tf.image.central_crop(
-        input_images_resized, central_fraction=crop_size / 256
-    )
+    # resizing and cropping happened in the feature creation pipeline
     preprocessed_data = preprocess_input(input_images)  # Normalization step is in here.
     dataset = tf.data.Dataset.from_tensor_slices(preprocessed_data)
     dataset = dataset.batch(100)
 
     # Load the pre-trained ResNet-101 model
     resnet101 = ResNet101(weights="imagenet", include_top=False, pooling="avg")
-    # flatten_layer = Flatten()(resnet101.output)
     model = Model(inputs=resnet101.input, outputs=resnet101.output)
 
     for layer in model.layers:
         layer.trainable = False
 
     embeddings = model.predict(dataset)
-    print(embeddings[0].shape)
+
     resnet101_embed_df = pl.DataFrame(
         {"RESNET101": [row.tolist() for row in embeddings]}
     )

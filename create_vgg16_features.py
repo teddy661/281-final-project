@@ -26,31 +26,27 @@ tf.get_logger().setLevel("ERROR")
 
 
 def process_features(input_df: pl.DataFrame) -> pl.DataFrame:
-    image_df = input_df.select(["Image"])
+    image_df = input_df.select(["ImageNet_Scaled_Image"])
     image_df = image_df.with_columns(
         pl.col("Image").map_elements(lambda x: np.load(BytesIO(x))).alias("NumPy")
     )
     input_images = np.asarray(image_df["NumPy"].to_list())
-    preprocessed_data = preprocess_input(input_images)
+    input_images_tf = tf.convert_to_tensor(input_images)
+    # resizing and cropping happened in the feature creation pipeline
+    preprocessed_data = preprocess_input(input_images)  # Normalization step is in here.
     dataset = tf.data.Dataset.from_tensor_slices(preprocessed_data)
     dataset = dataset.batch(100)
 
-    # Change input shape
-    input_shape = (64, 64, 3)  # Assuming 3 channels for RGB images
-    new_input = Input(shape=input_shape)
-
     # Load the pre-trained VGG16 model
-    # vgg16 = VGG16(weights="imagenet", input_tensor=new_input, include_top=False)
-    vgg16 = VGG16(
-        weights="imagenet", input_tensor=new_input, include_top=False, pooling="avg"
-    )
-    flatten_layer = Flatten()(vgg16.output)
-    model = Model(inputs=vgg16.input, outputs=flatten_layer)
+
+    vgg16 = VGG16(weights="imagenet", include_top=False, pooling="avg")
+    model = Model(inputs=vgg16.input, outputs=vgg16.output)
 
     for layer in model.layers:
         layer.trainable = False
 
     embeddings = model.predict(dataset)
+
     vgg16_embed_df = pl.DataFrame({"VGG16": [row.tolist() for row in embeddings]})
     df_final = pl.concat([input_df, vgg16_embed_df], how="horizontal")
     return df_final
