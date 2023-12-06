@@ -42,14 +42,10 @@ def process_features(input_df: pl.DataFrame) -> pl.DataFrame:
     dataset = dataset.batch(100)
 
     # Load the pre-trained ResNet-101 model
-    # resnet101 = ResNet101(weights="imagenet", input_tensor=new_input, include_top=False)
     resnet101 = ResNet101(weights="imagenet", include_top=False, pooling="avg")
-    flatten_layer = Flatten()(resnet101.output)
-    # model = Model(inputs=resnet101.input, outputs=flatten_layer)
-    model = Model(
-        inputs=resnet101.input, outputs=resnet101.get_layer("conv5_block3_out").output
-    )
-    # conv5_black3_out (2,2,2048)
+    # flatten_layer = Flatten()(resnet101.output)
+    model = Model(inputs=resnet101.input, outputs=resnet101.output)
+
     for layer in model.layers:
         layer.trainable = False
 
