@@ -57,6 +57,37 @@ def crop_to_roi(
         convert_numpy_to_bytesio(cropped_image),
     )
 
+def center_crop(image: np.array, target_height: int, target_width: int) -> np.array:
+    """
+    Perform a center crop on the input image.
+
+    Parameters:
+    - image: NumPy array representing the input image.
+    - target_height: Desired height of the cropped image.
+    - target_width: Desired width of the cropped image.
+
+    Returns:
+    - Cropped image.
+    """
+    height, width = image.shape[:2]
+
+    # Calculate the crop box
+    crop_top = max(0, (height - target_height) // 2)
+    crop_left = max(0, (width - target_width) // 2)
+    crop_bottom = min(height, crop_top + target_height)
+    crop_right = min(width, crop_left + target_width)
+
+    # Perform the crop
+    cropped_image = image[crop_top:crop_bottom, crop_left:crop_right, :]
+
+    return cropped_image
+
+def rescale_image_for_imagenet(image: bytes, new_image_size: int = 256) -> np.array:
+    _,_,rs_image = rescale_image(image, new_image_size=new_image_size)
+    rs_image = np.load(BytesIO(rs_image))
+    cropped_image = center_crop(rs_image, 224, 224)
+    return cropped_image.shape[1], cropped_image.shape[0], convert_numpy_to_bytesio(cropped_image)
+
 def rescale_image(image: bytes, new_image_size: int = 64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
@@ -232,6 +263,28 @@ def crop_to_roi_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame
     )
     return df
 
+def rescale_image_for_imagenet_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    To parallelize the workflow each of the functions previously defined needs
+    to be wrapped in a function that takes a dataframe and returns a dataframe.
+    This one rescales the image to our standard size which is 64x64
+    """
+    df = df.with_columns(
+        pl.col("Cropped_Image")
+        .map_elements(
+            lambda x: dict(
+                zip(
+                    ("ImageNet_Scaled_Width", "ImageNet_Scaled_Height", "ImageNet_Scaled_Image"),
+                    rescale_image_for_imagenet(x),
+                )
+            )
+        )
+        .alias("New_Cols")
+    ).unnest("New_Cols")
+    df = df.with_columns(
+        (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
+    )
+    return df
 
 def rescale_image_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
@@ -410,6 +463,13 @@ def process_csv(
     df = parallelize_dataframe(df, meta_df, rescale_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
+    
+    # Rescale the image for ImageNet
+    print(f"\tBegin Re-scaling Images for ImageNet", file=sys.stderr)
+    start_time = datetime.now()
+    df = parallelize_dataframe(df, meta_df, rescale_image_for_imagenet_wrapper, num_cpus)
+    end_time = datetime.now()
+    print(f"\tEnd Re-scaling Images for ImageNet:\t\t{end_time - start_time}", file=sys.stderr)
 
     ##
     # Turns out histogram stretching and re-assembly is bad according to Rachel. Do not use
