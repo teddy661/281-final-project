@@ -28,7 +28,7 @@ tf.get_logger().setLevel("ERROR")
 def process_features(input_df: pl.DataFrame) -> pl.DataFrame:
     image_df = input_df.select(["ImageNet_Scaled_Image"])
     image_df = image_df.with_columns(
-        pl.col("Image").map_elements(lambda x: np.load(BytesIO(x))).alias("NumPy")
+        pl.col("ImageNet_Scaled_Image").map_elements(lambda x: np.load(BytesIO(x))).alias("NumPy")
     )
     input_images = np.asarray(image_df["NumPy"].to_list())
     input_images_tf = tf.convert_to_tensor(input_images)
