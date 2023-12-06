@@ -57,8 +57,7 @@ def crop_to_roi(
         convert_numpy_to_bytesio(cropped_image),
     )
 
-
-def rescale_image(image: bytes, standard: int = 64) -> tuple:
+def rescale_image(image: bytes, new_image_size: int = 64) -> tuple:
     """
     Rescale the image to a standard size. Median for our dataset is 35x35.
     Use order = 5 for (Bi-quintic) #Very slow Super high quality result.
@@ -69,11 +68,11 @@ def rescale_image(image: bytes, standard: int = 64) -> tuple:
     which is our standard image format due to cvtColor limitations
     """
     image = np.load(BytesIO(image))
-    scale = standard / min(image.shape[:2])
+    scale = new_image_size / min(image.shape[:2])
     image = rescale(image, scale, order=5, anti_aliasing=True, channel_axis=2)
     image = image[
-        int(image.shape[0] / 2 - standard / 2) : int(image.shape[0] / 2 + standard / 2),
-        int(image.shape[1] / 2 - standard / 2) : int(image.shape[1] / 2 + standard / 2),
+        int(image.shape[0] / 2 - new_image_size / 2) : int(image.shape[0] / 2 + new_image_size / 2),
+        int(image.shape[1] / 2 - new_image_size / 2) : int(image.shape[1] / 2 + new_image_size / 2),
         :,
     ]
     scaled_image_height = image.shape[0]
