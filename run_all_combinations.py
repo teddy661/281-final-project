@@ -144,7 +144,7 @@ def build_model(features):
     if "template" in features:
         X_train = np.concatenate((X_train, X_train_Template), axis=1)
         X_test = np.concatenate((X_test, X_test_Template), axis=1)
-        X_validation = np.concatenate((X_validation, X_vaidation_Template), axis=1)
+        X_validation = np.concatenate((X_validation, X_validation_Template), axis=1)
     if "hog" in features:
         X_train = np.concatenate((X_train, X_train_HOG), axis=1)
         X_test = np.concatenate((X_test, X_test_HOG), axis=1)
