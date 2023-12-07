@@ -57,6 +57,7 @@ def crop_to_roi(
         convert_numpy_to_bytesio(cropped_image),
     )
 
+
 def center_crop(image: np.array, target_height: int, target_width: int) -> np.array:
     """
     Perform a center crop on the input image.
@@ -82,11 +83,17 @@ def center_crop(image: np.array, target_height: int, target_width: int) -> np.ar
 
     return cropped_image
 
+
 def rescale_image_for_imagenet(image: bytes, new_image_size: int = 256) -> np.array:
-    _,_,rs_image = rescale_image(image, new_image_size=new_image_size)
+    _, _, rs_image = rescale_image(image, new_image_size=new_image_size)
     rs_image = np.load(BytesIO(rs_image))
     cropped_image = center_crop(rs_image, 224, 224)
-    return cropped_image.shape[1], cropped_image.shape[0], convert_numpy_to_bytesio(cropped_image)
+    return (
+        cropped_image.shape[1],
+        cropped_image.shape[0],
+        convert_numpy_to_bytesio(cropped_image),
+    )
+
 
 def rescale_image(image: bytes, new_image_size: int = 64) -> tuple:
     """
@@ -102,8 +109,12 @@ def rescale_image(image: bytes, new_image_size: int = 64) -> tuple:
     scale = new_image_size / min(image.shape[:2])
     image = rescale(image, scale, order=5, anti_aliasing=True, channel_axis=2)
     image = image[
-        int(image.shape[0] / 2 - new_image_size / 2) : int(image.shape[0] / 2 + new_image_size / 2),
-        int(image.shape[1] / 2 - new_image_size / 2) : int(image.shape[1] / 2 + new_image_size / 2),
+        int(image.shape[0] / 2 - new_image_size / 2) : int(
+            image.shape[0] / 2 + new_image_size / 2
+        ),
+        int(image.shape[1] / 2 - new_image_size / 2) : int(
+            image.shape[1] / 2 + new_image_size / 2
+        ),
         :,
     ]
     scaled_image_height = image.shape[0]
@@ -263,7 +274,10 @@ def crop_to_roi_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame
     )
     return df
 
-def rescale_image_for_imagenet_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
+
+def rescale_image_for_imagenet_wrapper(
+    df: pl.DataFrame, meta_df: pl.DataFrame
+) -> pl.DataFrame:
     """
     To parallelize the workflow each of the functions previously defined needs
     to be wrapped in a function that takes a dataframe and returns a dataframe.
@@ -274,7 +288,11 @@ def rescale_image_for_imagenet_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) 
         .map_elements(
             lambda x: dict(
                 zip(
-                    ("ImageNet_Scaled_Width", "ImageNet_Scaled_Height", "ImageNet_Scaled_Image"),
+                    (
+                        "ImageNet_Scaled_Width",
+                        "ImageNet_Scaled_Height",
+                        "ImageNet_Scaled_Image",
+                    ),
                     rescale_image_for_imagenet(x),
                 )
             )
@@ -285,6 +303,7 @@ def rescale_image_for_imagenet_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) 
         (pl.col("Scaled_Width") * pl.col("Scaled_Height")).alias("Scaled_Resolution")
     )
     return df
+
 
 def rescale_image_wrapper(df: pl.DataFrame, meta_df: pl.DataFrame) -> pl.DataFrame:
     """
@@ -421,7 +440,11 @@ def process_meta_csv(csv_file: Path, root_dir: Path, num_cpus: int) -> pl.DataFr
 
 
 def process_csv(
-    csv_file: Path, root_dir: Path, meta_df: pl.DataFrame, num_cpus: int
+    csv_file: Path,
+    root_dir: Path,
+    meta_df: pl.DataFrame,
+    num_cpus: int,
+    do_imagenet=False,
 ) -> pl.DataFrame:
     """
     Read the csv file into a polars dataframe.
@@ -463,13 +486,21 @@ def process_csv(
     df = parallelize_dataframe(df, meta_df, rescale_image_wrapper, num_cpus)
     end_time = datetime.now()
     print(f"\tEnd Re-scaling Images:\t\t{end_time - start_time}", file=sys.stderr)
-    
-    # Rescale the image for ImageNet
-    print(f"\tBegin Re-scaling Images for ImageNet", file=sys.stderr)
-    start_time = datetime.now()
-    df = parallelize_dataframe(df, meta_df, rescale_image_for_imagenet_wrapper, num_cpus)
-    end_time = datetime.now()
-    print(f"\tEnd Re-scaling Images for ImageNet:\t\t{end_time - start_time}", file=sys.stderr)
+
+    if do_imagenet:
+        # Rescale the image for ImageNet
+        print(f"\tBegin Re-scaling Images for ImageNet", file=sys.stderr)
+        start_time = datetime.now()
+        df = parallelize_dataframe(
+            df, meta_df, rescale_image_for_imagenet_wrapper, num_cpus
+        )
+        end_time = datetime.now()
+        print(
+            f"\tEnd Re-scaling Images for ImageNet:\t\t{end_time - start_time}",
+            file=sys.stderr,
+        )
+    else:
+        print("\tSkipping Re-scaling Images for ImageNet", file=sys.stderr)
 
     ##
     # Turns out histogram stretching and re-assembly is bad according to Rachel. Do not use
@@ -526,9 +557,28 @@ def main():
         type=int,
         default=None,
     )
+
+    parser.add_argument(
+        "-i",
+        dest="do_imagenet",
+        help="scale images for vgg16 and resnet101 models",
+        action="store_true",
+        default=False,
+    )
+
     args = parser.parse_args()
     prog_name = parser.prog
+    do_imagenet = args.do_imagenet
 
+    if do_imagenet:
+        mem_info = psutil.virtual_memory()
+        total_ram = mem_info.total / (1024**3)
+        if total_ram < 128:
+            print(
+                f"WARNING: Not enough RAM to process images for imagenet models. Need at least 128GB. Only have {int(total_ram)}GB",
+                file=sys.stderr,
+            )
+            exit(1)
     root_dir = Path(args.root_dir)
     if not root_dir.exists():
         print(f"Directory does not exit: {root_dir} ", file=sys.stderr)
@@ -620,7 +670,7 @@ def main():
     print(f"Begin Processing train data.", file=sys.stderr)
     test_start_time = datetime.now()
     train_csv = root_dir.joinpath("Train.csv")
-    train_df = process_csv(train_csv, root_dir, meta_df, num_cpus)
+    train_df = process_csv(train_csv, root_dir, meta_df, num_cpus, do_imagenet)
     print(f"\tBegin Writing train data.", file=sys.stderr)
     start_time = datetime.now()
     train_df.write_parquet(
