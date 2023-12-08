@@ -205,7 +205,9 @@ def main():
         )
         results_df = pl.concat([results_df, current_results_df])
         print(
-            results_df.select(["NumFeatures", "Accuracy", "TrainTime", "PredictTime"])
+            results_df.select(
+                ["NumFeatures", "Accuracy", "TrainTime", "PredictTime", "Features"]
+            )
         )
     results_df.write_parquet(
         "linear-svc-results.parquet", compression="zstd", compression_level=6
