@@ -185,7 +185,7 @@ def main():
         train_end_time = datetime.now()
         total_train_time = (train_end_time - train_start_time).total_seconds()
         model_path = Path(f"models/linear-svc-{'-'.join(current_features)}.joblib")
-        joblib.dump(svc_model, model_path)
+        # joblib.dump(svc_model, model_path) # This creates over 1TB of joblib files. Disabled for now.
         predict_start_time = datetime.now()
         y_pred = svc_model.predict(X_test)
         predict_end_time = datetime.now()
