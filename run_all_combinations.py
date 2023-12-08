@@ -189,7 +189,7 @@ def main():
         model_path = Path(f"models/linear-svc-{'-'.join(current_features)}.joblib")
         # joblib.dump(svc_model, model_path) # This creates over 1TB of joblib files. Disabled for now.
         predict_start_time = datetime.now()
-        y_pred = svc_model.predict(X_test)
+        y_pred = svc_model.predict(X_validation)
         predict_end_time = datetime.now()
         total_predict_time = (predict_end_time - predict_start_time).total_seconds()
         current_results_df = pl.DataFrame(
@@ -198,10 +198,10 @@ def main():
                 "NumFeatures": [num_features],
                 "TrainTime": [total_train_time],
                 "PredictTime": [total_predict_time],
-                "Accuracy": [accuracy_score(y_test, y_pred)],
-                "ConfusionMatrix_Shape": [confusion_matrix(y_test, y_pred).shape],
-                "ConfusionMatrix": [confusion_matrix(y_test, y_pred).flatten()],
-                "ClassificationReport": [classification_report(y_test, y_pred)],
+                "Accuracy": [accuracy_score(y_validation, y_pred)],
+                "ConfusionMatrix_Shape": [confusion_matrix(y_validation, y_pred).shape],
+                "ConfusionMatrix": [confusion_matrix(y_validation, y_pred).flatten()],
+                "ClassificationReport": [classification_report(y_validation, y_pred)],
                 "ModelPath": [str(model_path)],
             }
         )
