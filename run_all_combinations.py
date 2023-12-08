@@ -7,7 +7,6 @@ from sklearnex import patch_sklearn
 
 patch_sklearn()
 
-import multiprocessing as mp
 from datetime import datetime
 from itertools import combinations
 
@@ -25,15 +24,17 @@ def build_model(features):
     """
     Fit model
     """
-    svc_model = make_pipeline(
-        SVC(
-            kernel="linear",
-            C=0.01,
-            decision_function_shape="ovo",
-            probability=False,
-            random_state=42,
-        )
-    )
+
+
+def main():
+    """
+    Main function
+    """
+
+    all_feature_combinations = []
+    for r in range(1, len(FEATURE_LIST) + 1):
+        all_feature_combinations.extend(list(combinations(FEATURE_LIST, r)))
+
     raw_train_df, test_df, meta_df = load_raw_dataframes()
     sampled_train_df = get_sampled_data(raw_train_df)
     train_df, validation_df = split_data(sampled_train_df)
@@ -121,69 +122,94 @@ def build_model(features):
     X_train_RESNET101 = RESNET101_scaler.fit_transform(X_train_RESNET101)
     X_test_RESNET101 = RESNET101_scaler.transform(X_test_RESNET101)
     X_validation_RESNET101 = RESNET101_scaler.transform(X_validation_RESNET101)
-    X_train = np.empty((X_train_Template.shape[0], 0))
-    X_test = np.empty((X_test_Template.shape[0], 0))
-    X_validation = np.empty((X_validation_Template.shape[0], 0))
-
-    if "lbp" in features:
-        X_train = np.concatenate((X_train, X_train_LBP), axis=1)
-        X_test = np.concatenate((X_test, X_test_LBP), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_LBP), axis=1)
-    if "hue" in features:
-        X_train = np.concatenate((X_train, X_train_Hue), axis=1)
-        X_test = np.concatenate((X_test, X_test_Hue), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_Hue), axis=1)
-    if "sat" in features:
-        X_train = np.concatenate((X_train, X_train_Saturation), axis=1)
-        X_test = np.concatenate((X_test, X_test_Saturation), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_Saturation), axis=1)
-    if "value" in features:
-        X_train = np.concatenate((X_train, X_train_Value), axis=1)
-        X_test = np.concatenate((X_test, X_test_Value), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_Value), axis=1)
-    if "template" in features:
-        X_train = np.concatenate((X_train, X_train_Template), axis=1)
-        X_test = np.concatenate((X_test, X_test_Template), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_Template), axis=1)
-    if "hog" in features:
-        X_train = np.concatenate((X_train, X_train_HOG), axis=1)
-        X_test = np.concatenate((X_test, X_test_HOG), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_HOG), axis=1)
-    if "vgg16" in features:
-        X_train = np.concatenate((X_train, X_train_VGG16), axis=1)
-        X_test = np.concatenate((X_test, X_test_VGG16), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_VGG16), axis=1)
-    if "resnet101" in features:
-        X_train = np.concatenate((X_train, X_train_RESNET101), axis=1)
-        X_test = np.concatenate((X_test, X_test_RESNET101), axis=1)
-        X_validation = np.concatenate((X_validation, X_validation_RESNET101), axis=1)
 
     y_train = train_df["ClassId"].to_numpy()
     y_test = test_df["ClassId"].to_numpy()
     y_validation = validation_df["ClassId"].to_numpy()
-    num_features = X_train.shape[1]
-    svc_model.fit(X_train, y_train)
-    joblib.dump(svc_model, f"models/linear-svc-{'-'.join(features)}.joblib")
+    results_df = pl.DataFrame()
+    for i, current_features in enumerate(all_feature_combinations):
+        X_train = np.empty((y_train.shape[0], 0))
+        X_test = np.empty((y_test.shape[0], 0))
+        X_validation = np.empty((y_validation.shape[0], 0))
 
-
-def main():
-    """
-    Main function
-    """
-
-    all_combinations = []
-    for r in range(1, len(FEATURE_LIST) + 1):
-        all_combinations.extend(list(combinations(FEATURE_LIST, r)))
-
-    for i, c in enumerate(all_combinations):
-        start_time = datetime.now()
-        process1 = mp.Process(target=build_model, args=(c,))
-        process1.start()
-        process1.join()
-        end_time = datetime.now()
-        print(
-            f"{i+1}/{len(all_combinations)}:\t{'-'.join(c)}:\t{(end_time - start_time).total_seconds()}"
+        svc_model = make_pipeline(
+            SVC(
+                kernel="linear",
+                C=0.01,
+                decision_function_shape="ovo",
+                probability=False,
+                random_state=42,
+            )
         )
+
+        if "lbp" in current_features:
+            X_train = np.concatenate((X_train, X_train_LBP), axis=1)
+            X_test = np.concatenate((X_test, X_test_LBP), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_LBP), axis=1)
+        if "hue" in current_features:
+            X_train = np.concatenate((X_train, X_train_Hue), axis=1)
+            X_test = np.concatenate((X_test, X_test_Hue), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_Hue), axis=1)
+        if "sat" in current_features:
+            X_train = np.concatenate((X_train, X_train_Saturation), axis=1)
+            X_test = np.concatenate((X_test, X_test_Saturation), axis=1)
+            X_validation = np.concatenate(
+                (X_validation, X_validation_Saturation), axis=1
+            )
+        if "value" in current_features:
+            X_train = np.concatenate((X_train, X_train_Value), axis=1)
+            X_test = np.concatenate((X_test, X_test_Value), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_Value), axis=1)
+        if "template" in current_features:
+            X_train = np.concatenate((X_train, X_train_Template), axis=1)
+            X_test = np.concatenate((X_test, X_test_Template), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_Template), axis=1)
+        if "hog" in current_features:
+            X_train = np.concatenate((X_train, X_train_HOG), axis=1)
+            X_test = np.concatenate((X_test, X_test_HOG), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_HOG), axis=1)
+        if "vgg16" in current_features:
+            X_train = np.concatenate((X_train, X_train_VGG16), axis=1)
+            X_test = np.concatenate((X_test, X_test_VGG16), axis=1)
+            X_validation = np.concatenate((X_validation, X_validation_VGG16), axis=1)
+        if "resnet101" in current_features:
+            X_train = np.concatenate((X_train, X_train_RESNET101), axis=1)
+            X_test = np.concatenate((X_test, X_test_RESNET101), axis=1)
+            X_validation = np.concatenate(
+                (X_validation, X_validation_RESNET101), axis=1
+            )
+
+        num_features = X_train.shape[1]
+        train_start_time = datetime.now()
+        svc_model.fit(X_train, y_train)
+        train_end_time = datetime.now()
+        total_train_time = (train_end_time - train_start_time).total_seconds()
+        model_path = Path(f"models/linear-svc-{'-'.join(current_features)}.joblib")
+        joblib.dump(svc_model, model_path)
+        predict_start_time = datetime.now()
+        y_pred = svc_model.predict(X_test)
+        predict_end_time = datetime.now()
+        total_predict_time = (predict_end_time - predict_start_time).total_seconds()
+        current_results_df = pl.DataFrame(
+            {
+                "Features": [current_features],
+                "NumFeatures": [num_features],
+                "TrainTime": [total_train_time],
+                "PredictTime": [total_predict_time],
+                "Accuracy": [accuracy_score(y_test, y_pred)],
+                "ConfusionMatrix_Shape": [confusion_matrix(y_test, y_pred).shape],
+                "ConfusionMatrix": [confusion_matrix(y_test, y_pred).flatten()],
+                "ClassificationReport": [classification_report(y_test, y_pred)],
+                "ModelPath": [str(model_path)],
+            }
+        )
+        results_df = pl.concat([results_df, current_results_df])
+        print(
+            results_df.select(["NumFeatures", "Accuracy", "TrainTime", "PredictTime"])
+        )
+    results_df.write_parquet(
+        "linear-svc-results.parquet", compression="zstd", compression_level=6
+    )
 
 
 if __name__ == "__main__":
