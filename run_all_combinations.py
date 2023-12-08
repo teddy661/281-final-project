@@ -133,13 +133,15 @@ def main():
         X_validation = np.empty((y_validation.shape[0], 0))
 
         svc_model = make_pipeline(
+            # StandardScaler(),
             SVC(
                 kernel="linear",
-                C=0.01,
+                C=0.005,
                 decision_function_shape="ovo",
-                probability=False,
+                probability=False,  # True is our best model according to hyperparameter tuning, but this is excssive on memory
+                gamma="scale",
                 random_state=42,
-            )
+            ),
         )
 
         if "lbp" in current_features:
