@@ -19,16 +19,14 @@ from classification_data_loader import *
 
 FEATURE_LIST = ["hue", "sat", "value", "hog", "lbp", "template", "vgg16", "resnet101"]
 
-
-def build_model(features):
-    """
-    Fit model
-    """
+PROCESS_TEST_DATA = False
 
 
 def main():
     """
-    Main function
+    This function will run all combinations of feature vectors though the model and optionally save the models.
+    The results are saved to a parquet file prefixed with the word "test" or "validation" depending on the value of PROCESS_TEST_DATA.
+    We can then make an assessment of accuracy vs efficiency and choose the best feature vectors.
     """
 
     all_feature_combinations = []
@@ -188,9 +186,14 @@ def main():
         total_train_time = (train_end_time - train_start_time).total_seconds()
         model_path = Path(f"models/linear-svc-{'-'.join(current_features)}.joblib")
         # joblib.dump(svc_model, model_path) # This creates over 1TB of joblib files. Disabled for now.
-        predict_start_time = datetime.now()
-        y_pred = svc_model.predict(X_validation)
-        predict_end_time = datetime.now()
+        if PROCESS_TEST_DATA:
+            predict_start_time = datetime.now()
+            y_pred = svc_model.predict(X_test)
+            predict_end_time = datetime.now()
+        else:
+            predict_start_time = datetime.now()
+            y_pred = svc_model.predict(X_validation)
+            predict_end_time = datetime.now()
         total_predict_time = (predict_end_time - predict_start_time).total_seconds()
         current_results_df = pl.DataFrame(
             {
@@ -211,8 +214,15 @@ def main():
                 ["NumFeatures", "Accuracy", "TrainTime", "PredictTime", "Features"]
             )
         )
+    if PROCESS_TEST_DATA:
+        prefix = "test"
+    else:
+        prefix = "validation"
+
     results_df.write_parquet(
-        "linear-svc-results.parquet", compression="zstd", compression_level=6
+        f"{prefix}-data-linear-svc-results.parquet",
+        compression="zstd",
+        compression_level=6,
     )
 
 
