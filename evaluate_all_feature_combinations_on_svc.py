@@ -39,19 +39,12 @@ def main():
     del sampled_train_df, raw_train_df
 
     ### LBP
-    LBP_scalar = StandardScaler()
 
     X_train_LBP, X_test_LBP, X_validation_LBP = get_lbp_features(
         train_df, test_df, validation_df
     )
-    X_train_LBP = LBP_scalar.fit_transform(X_train_LBP)
-    X_test_LBP = LBP_scalar.transform(X_test_LBP)
-    X_validation_LBP = LBP_scalar.transform(X_validation_LBP)
 
     ### HSV Features
-    Hue_scaler = StandardScaler()
-    Sat_Scaler = StandardScaler()
-    Val_Scaler = StandardScaler()
 
     X_train_Hue, X_test_Hue, X_validation_Hue = get_hue_features(
         train_df, test_df, validation_df
@@ -65,61 +58,31 @@ def main():
         train_df, test_df, validation_df
     )
 
-    X_train_Hue = Hue_scaler.fit_transform(X_train_Hue)
-    X_train_Saturation = Sat_Scaler.fit_transform(X_train_Saturation)
-    X_train_Value = Val_Scaler.fit_transform(X_train_Value)
-
-    X_test_Hue = Hue_scaler.transform(X_test_Hue)
-    X_test_Saturation = Sat_Scaler.transform(X_test_Saturation)
-    X_test_Value = Val_Scaler.transform(X_test_Value)
-
-    X_validation_Hue = Hue_scaler.transform(X_validation_Hue)
-    X_validation_Saturation = Sat_Scaler.transform(X_validation_Saturation)
-    X_validation_Value = Val_Scaler.transform(X_validation_Value)
-
     ### Template Fratures
-    Template_scalar = StandardScaler()
 
     X_train_Template, X_test_Template, X_validation_Template = get_template_features(
         train_df, test_df, validation_df
     )
 
-    X_train_Template = Template_scalar.fit_transform(X_train_Template)
-    X_test_Template = Template_scalar.transform(X_test_Template)
-    X_validation_Template = Template_scalar.transform(X_validation_Template)
-
     ### HOG Features
-    HOG_scaler = StandardScaler()
 
     X_train_HOG, X_test_HOG, X_validation_HOG = get_hog_features(
         train_df, test_df, validation_df
     )
 
-    X_train_HOG = HOG_scaler.fit_transform(X_train_HOG)
-    X_test_HOG = HOG_scaler.transform(X_test_HOG)
-    X_validation_HOG = HOG_scaler.transform(X_validation_HOG)
-
     ### VGG16 Features
-    VGG16_scaler = StandardScaler()
 
     X_train_VGG16, X_test_VGG16, X_validation_VGG16 = get_vgg16_features(
         train_df, test_df, validation_df
     )
-    X_train_VGG16 = VGG16_scaler.fit_transform(X_train_VGG16)
-    X_test_VGG = VGG16_scaler.transform(X_test_VGG16)
-    X_validation_VGG = VGG16_scaler.transform(X_validation_VGG16)
 
     ### RESNET101 Features
-    RESNET101_scaler = StandardScaler()
 
     (
         X_train_RESNET101,
         X_test_RESNET101,
         X_validation_RESNET101,
     ) = get_resnet101_features(train_df, test_df, validation_df)
-    X_train_RESNET101 = RESNET101_scaler.fit_transform(X_train_RESNET101)
-    X_test_RESNET101 = RESNET101_scaler.transform(X_test_RESNET101)
-    X_validation_RESNET101 = RESNET101_scaler.transform(X_validation_RESNET101)
 
     y_train = train_df["ClassId"].to_numpy()
     y_test = test_df["ClassId"].to_numpy()
@@ -131,7 +94,7 @@ def main():
         X_validation = np.empty((y_validation.shape[0], 0))
 
         svc_model = make_pipeline(
-            # StandardScaler(),
+            StandardScaler(),
             SVC(
                 kernel="linear",
                 C=0.005,
