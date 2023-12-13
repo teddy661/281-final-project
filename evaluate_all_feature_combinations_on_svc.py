@@ -19,7 +19,7 @@ from classification_data_loader import *
 
 FEATURE_LIST = ["hue", "sat", "value", "hog", "lbp", "template", "vgg16", "resnet101"]
 
-PROCESS_TEST_DATA = False
+PROCESS_TEST_DATA = True
 
 
 def main():
@@ -158,19 +158,40 @@ def main():
             y_pred = svc_model.predict(X_validation)
             predict_end_time = datetime.now()
         total_predict_time = (predict_end_time - predict_start_time).total_seconds()
-        current_results_df = pl.DataFrame(
-            {
-                "Features": [current_features],
-                "NumFeatures": [num_features],
-                "TrainTime": [total_train_time],
-                "PredictTime": [total_predict_time],
-                "Accuracy": [accuracy_score(y_validation, y_pred)],
-                "ConfusionMatrix_Shape": [confusion_matrix(y_validation, y_pred).shape],
-                "ConfusionMatrix": [confusion_matrix(y_validation, y_pred).flatten()],
-                "ClassificationReport": [classification_report(y_validation, y_pred)],
-                "ModelPath": [str(model_path)],
-            }
-        )
+        if PROCESS_TEST_DATA:
+            current_results_df = pl.DataFrame(
+                {
+                    "Features": [current_features],
+                    "NumFeatures": [num_features],
+                    "TrainTime": [total_train_time],
+                    "PredictTime": [total_predict_time],
+                    "Accuracy": [accuracy_score(y_test, y_pred)],
+                    "ConfusionMatrix_Shape": [confusion_matrix(y_test, y_pred).shape],
+                    "ConfusionMatrix": [confusion_matrix(y_test, y_pred).flatten()],
+                    "ClassificationReport": [classification_report(y_test, y_pred)],
+                    "ModelPath": [str(model_path)],
+                }
+            )
+        else:
+            current_results_df = pl.DataFrame(
+                {
+                    "Features": [current_features],
+                    "NumFeatures": [num_features],
+                    "TrainTime": [total_train_time],
+                    "PredictTime": [total_predict_time],
+                    "Accuracy": [accuracy_score(y_validation, y_pred)],
+                    "ConfusionMatrix_Shape": [
+                        confusion_matrix(y_validation, y_pred).shape
+                    ],
+                    "ConfusionMatrix": [
+                        confusion_matrix(y_validation, y_pred).flatten()
+                    ],
+                    "ClassificationReport": [
+                        classification_report(y_validation, y_pred)
+                    ],
+                    "ModelPath": [str(model_path)],
+                }
+            )
         results_df = pl.concat([results_df, current_results_df])
         print(
             results_df.select(
