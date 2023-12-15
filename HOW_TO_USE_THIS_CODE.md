@@ -1,5 +1,6 @@
+The workflow for using this code is the following: 
 
-Download the German Street Signs dataset from [here](https://www.kaggle.com/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign) and extract it to a folder in the root of the repository called `sign_data`. The folder structure should look like this:
+In the root of the repository, create a folder called `data`. Download the German Street Signs dataset from [here](https://www.kaggle.com/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign) and extract it to a folder in the root of the repository called `sign_data`. The folder structure should look like this:
 
 ``` sign_data
 ├── Meta
@@ -19,7 +20,7 @@ Manually copy the created_csv\Meta-full.csv to sign_data\Meta-full.csv
 
 Install the required packages using `pip install -r requirements.txt`. We used python 3.11.7. Alternatively install the docker image using `docker pull ebrown/comp-viz-jupyter:latest` and -v this/repo:/tf/notebooks.
 
-Create the parquet files used for analysis by running `python process_raw_dataset.py`. This will create the files `data/train.parquet` `sign_data/test.parquet` and `sign_data/meta_full.parquet`.
+Create the parquet files used for analysis by running `python process_raw_dataset.py -r ./sign_data`. This will create the files `data/train.parquet` `sign_data/test.parquet` and `sign_data/meta_full.parquet`.
 
 Create the features used for analysis by running `python create_features.py`. This will create the files `data/train_features.parquet` and `data/test_features.parquet`.
 
