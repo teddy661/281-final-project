@@ -17,7 +17,7 @@ Download the German Street Signs dataset from [here](https://www.kaggle.com/meow
 
 Manually copy the created_csv\Meta-full.csv to sign_data\Meta-full.csv 
 
-Install the required packages using `pip install -r requirements.txt`. We used python 3.11.7. Alternatively install the docker image using `docker pull ebrown/comp-viz-jupyter:latest`.
+Install the required packages using `pip install -r requirements.txt`. We used python 3.11.7. Alternatively install the docker image using `docker pull ebrown/comp-viz-jupyter:latest` and -v this/repo:/tf/notebooks.
 
 Create the parquet files used for analysis by running `python process_raw_dataset.py`. This will create the files `data/train.parquet` `sign_data/test.parquet` and `sign_data/meta_full.parquet`.
 
